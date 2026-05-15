@@ -125,7 +125,19 @@ The core innovation lies in the application of the UltraHonk zero-knowledge prov
 
 The system architecture consists of two major parallel development tracks: (1) a ZK voting application layer with smart contracts, browser-based proof generation, and a React frontend; and (2) a custom purpose-built blockchain in Go, designed specifically for election administration without the overhead of general-purpose platforms like Ethereum.
 
-The functional prototype demonstrates that zero-knowledge proofs can be generated entirely client-side and verified on-chain in a single transaction, achieving voter anonymity and public auditability simultaneously. The system prevents double-voting through deterministic nullifier tracking while maintaining complete voter privacy-a property that is mathematically guaranteed rather than dependent on trusted third parties.
+The functional prototype demonstrates that zero-knowledge proofs can be generated entirely client-side and verified on-chain in a single transaction, achieving voter anonymity and public auditability simultaneously. The system prevents double-voting through deterministic nullifier tracking while maintaining complete voter privacy---a property that is mathematically guaranteed rather than dependent on trusted third parties.
+
+\newpage
+
+\chapter*{Acknowledgments}
+
+We would like to express our sincere gratitude to our project supervisor, Dr. Subodha Gunawardena, for the continuous guidance, valuable suggestions, and encouragement provided throughout this project. His expertise in distributed systems and cryptographic protocols has been invaluable in shaping both the theoretical foundations and practical implementation of this research.
+
+We also extend our thanks to the academic staff of the Department of Electrical and Information Engineering, Faculty of Engineering, University of Ruhuna, for providing the knowledge, resources, and academic environment necessary for the completion of this project.
+
+Our heartfelt appreciation goes to our colleagues and friends for their support, discussions, and constructive feedback during the development of this work.
+
+Finally, we express our deepest gratitude to our families for their endless encouragement, patience, and unwavering support throughout our academic journey.
 
 \newpage
 
@@ -475,9 +487,9 @@ Where $i$ is the level (0 = leaves) and $j$ is the position at that level. The r
 \textbf{Computational Complexity:}
 \begin{itemize}
     \item \textbf{Tree construction:} $O(n)$ hash computations for $n$ leaves
-    \item \textbf{Membership proof generation:} $O(\log n)$-only $d$ sibling hashes needed, where $d = \lceil \log_2 n \rceil$
-    \item \textbf{Proof verification:} $O(\log n)$-$d$ hash computations to reconstruct the root
-    \item \textbf{Proof size:} $O(\log n)$-constant per level, logarithmic in total leaves
+    \item \textbf{Membership proof generation:} $O(\log n)$---only $d$ sibling hashes needed, where $d = \lceil \log_2 n \rceil$
+    \item \textbf{Proof verification:} $O(\log n)$---$d$ hash computations to reconstruct the root
+    \item \textbf{Proof size:} $O(\log n)$---constant per level, logarithmic in total leaves
 \end{itemize}
 
 This logarithmic scaling is critical for ZK voting: regardless of whether the election has 100 or 100,000 registered voters, the ZK circuit performs only $d$ Poseidon hash computations to verify membership. With $d = 16$, our system supports up to $2^{16} = 65{,}536$ voters while maintaining constant proof size and verification time.
@@ -545,12 +557,12 @@ A NIZK proof system consists of three algorithms:
 
 Where:
 \begin{itemize}
-    \item $pk$ - proving key (public parameters for proof generation)
-    \item $vk$ - verification key (public parameters for proof checking)
-    \item $x$ - public inputs (statement to be verified)
-    \item $w$ - witness (private inputs known only to the prover)
-    \item $\pi$ - proof (succinct, constant-size)
-    \item $b$ - boolean verdict (accept/reject)
+    \item $pk$ --- proving key (public parameters for proof generation)
+    \item $vk$ --- verification key (public parameters for proof checking)
+    \item $x$ --- public inputs (statement to be verified)
+    \item $w$ --- witness (private inputs known only to the prover)
+    \item $\pi$ --- proof (succinct, constant-size)
+    \item $b$ --- boolean verdict (accept/reject)
 \end{itemize}
 
 \textbf{Succinctness} is a critical property: the proof size $|\pi|$ and verification time must be much smaller than the computation being proven. Formally, for a relation $\mathcal{R}$ with witness of size $n$, we require $|\pi| = O(\text{polylog}(n))$ and $T_{\text{verify}} = O(\text{polylog}(n))$. This property enables practical blockchain deployment-the on-chain verifier performs constant-time work regardless of the circuit complexity.
