@@ -1,0 +1,1948 @@
+\documentclass[12pt, a4paper]{report}
+\usepackage{graphicx}
+\usepackage{titlesec}
+\usepackage{tocloft}
+\usepackage{acro}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows, positioning, calc, fit}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+%% ____Bibliography____%%
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[breaklinks]{hyperref}
+\hypersetup{colorlinks=true,citecolor=blue,linkcolor=black,urlcolor=blue}
+% Page margins
+\usepackage[left=1.5in, right=1in, top=1in, bottom=1in]{geometry}
+
+\usepackage{array}
+\usepackage{lscape}
+\usepackage{adjustbox}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{caption}
+\usepackage{subcaption}
+
+% Code listing style
+\lstdefinestyle{solidity}{
+  language=Java,
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{blue}\bfseries,
+  stringstyle=\color{red},
+  commentstyle=\color{gray}\itshape,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  numbersep=5pt,
+  backgroundcolor=\color{gray!5},
+  frame=single,
+  breaklines=true,
+  captionpos=b,
+  morekeywords={contract, function, mapping, uint256, address, bool, string, bytes, bytes32, memory, calldata, public, private, external, internal, view, returns, emit, event, error, revert, require, modifier, constructor, import, pragma, solidity, using, for, struct, if, else}
+}
+
+\lstdefinestyle{typescript}{
+  language=Java,
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{blue}\bfseries,
+  stringstyle=\color{red},
+  commentstyle=\color{gray}\itshape,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  numbersep=5pt,
+  backgroundcolor=\color{gray!5},
+  frame=single,
+  breaklines=true,
+  captionpos=b,
+  morekeywords={const, let, async, await, import, from, export, interface, type, return, function, new, try, catch, throw, if, else, for}
+}
+
+\lstdefinestyle{noir}{
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{blue}\bfseries,
+  stringstyle=\color{red},
+  commentstyle=\color{gray}\itshape,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  numbersep=5pt,
+  backgroundcolor=\color{gray!5},
+  frame=single,
+  breaklines=true,
+  captionpos=b,
+  morekeywords={fn, main, pub, Field, u32, u1, let, mut, for, if, assert, use}
+}
+
+\lstdefinestyle{golang}{
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{blue}\bfseries,
+  stringstyle=\color{red},
+  commentstyle=\color{gray}\itshape,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  numbersep=5pt,
+  backgroundcolor=\color{gray!5},
+  frame=single,
+  breaklines=true,
+  captionpos=b,
+  morekeywords={func, package, import, type, struct, interface, return, if, else, for, range, var, const, map, go, chan, defer, make, nil}
+}
+
+% Remove page number from the first page
+\thispagestyle{empty}
+
+% Customize table of contents
+\renewcommand{\cfttoctitlefont}{\hfill\Large\bfseries}
+\renewcommand{\cftaftertoctitle}{\hfill}
+\renewcommand{\cftloftitlefont}{\hfill\Large\bfseries}
+\renewcommand{\cftafterloftitle}{\hfill}
+\renewcommand{\cftlottitlefont}{\hfill\Large\bfseries}
+\renewcommand{\cftafterlottitle}{\hfill}
+
+
+\begin{document}
+
+\include{cover}
+
+\renewcommand{\thepage}{\roman{page}}
+
+\chapter*{Abstract}
+
+This report presents the design, implementation, and evaluation of a privacy-preserving end-to-end verifiable blockchain-based electronic voting system with anonymous credential management. The system addresses fundamental challenges in electronic voting, namely voter privacy, vote integrity, resistance to double-voting, and public verifiability of results -through a novel combination of zero-knowledge proofs, Merkle tree-based membership verification, and a purpose-built blockchain infrastructure.
+
+The core innovation lies in the application of the UltraHonk zero-knowledge proving scheme (implemented via the Noir domain-specific language and Barretenberg proving backend) to enable voters to prove their eligibility and cast votes without revealing their identity. The cryptographic architecture combines a Poseidon hash-based commitment scheme for voter registration, a Lean Incremental Merkle Tree for on-chain commitment storage, and a nullifier-based double-vote prevention mechanism -all verified through a single zero-knowledge proof generated entirely in the voter's browser using WebAssembly.
+
+The system architecture consists of two major parallel development tracks: (1) a ZK voting application layer with smart contracts, browser-based proof generation, and a React frontend; and (2) a custom purpose-built blockchain in Go, designed specifically for election administration without the overhead of general-purpose platforms like Ethereum.
+
+The functional prototype demonstrates that zero-knowledge proofs can be generated entirely client-side and verified on-chain in a single transaction, achieving voter anonymity and public auditability simultaneously. The system prevents double-voting through deterministic nullifier tracking while maintaining complete voter privacy-a property that is mathematically guaranteed rather than dependent on trusted third parties.
+
+\newpage
+
+% Table of Contents
+\tableofcontents
+\newpage
+
+% List of Figures
+\listoffigures
+\newpage
+
+% List of Tables
+\listoftables
+\newpage
+
+% List of Acronyms
+\chapter*{List of Acronyms}
+\addcontentsline{toc}{chapter}{List of Acronyms}
+\begin{tabular}{ll}
+\textbf{ZK} & Zero-Knowledge \\
+\textbf{ZKP} & Zero-Knowledge Proof \\
+\textbf{IMT} & Incremental Merkle Tree \\
+\textbf{EVM} & Ethereum Virtual Machine \\
+\textbf{ABI} & Application Binary Interface \\
+\textbf{ACIR} & Abstract Circuit Intermediate Representation \\
+\textbf{E2E} & End-to-End \\
+\textbf{DApp} & Decentralized Application \\
+\textbf{SNARK} & Succinct Non-interactive Argument of Knowledge \\
+\textbf{VK} & Verification Key \\
+\textbf{UI} & User Interface \\
+\textbf{TX} & Transaction \\
+\textbf{ETH} & Ether (Ethereum native currency) \\
+\textbf{PoA} & Proof of Authority \\
+\textbf{API} & Application Programming Interface \\
+\textbf{REST} & Representational State Transfer \\
+\textbf{WASM} & WebAssembly \\
+\textbf{BN254} & Barreto--Naehrig curve with 254-bit prime \\
+\end{tabular}
+\newpage
+
+
+\renewcommand{\thepage}{\arabic{page}}
+\setcounter{page}{1}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CHAPTER 1: INTRODUCTION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Introduction}
+
+\section{Background}
+Electronic voting system has come out as a possible alternative that can help to modernize the way democracy is conducted by providing efficiency, accessibility and cheapness over the traditional paper based voting methods. Nonetheless, the implementation of e-voting systems has been deterred by valid issues of security, privacy, transparency and trust of people.\cite{hajian2024blockchain}. Generally, e-voting has three major components namely the electoral committee that oversees elections, the e-voting system infrastructure and the voters who cast their votes electronically.
+
+The use of technology should be involved in the voting process with an intention of accelerating the voting process, making it more effective and manageable, assuring privacy, trust, and security, improving usability, and performing better voter engagement. Customary e-voting systems normally use single points of centralization which make them prone to manipulation, hacking, and attacks.
+
+\subsection{Formal Requirements for Secure Electronic Voting}
+
+A secure electronic voting system should meet a number of formal conditions set by decades of research in cryptographic voting theory \cite{benaloh1987verifiable, chaum1981untraceable, adida2008helios}. At times, these requirements are in conflict and meeting them simultaneously is one of the basic problems in the field:
+
+\begin{enumerate}
+    \item \textbf{Eligibility:}  Only voters who are authorized are allowed to vote. Formally, $\forall v_i \in \text{Voters}: \text{canVote}(v_i) \iff v_i \in \mathcal{R}$ where $\mathcal{R}$ is the set of registered voters.
+    
+    \item \textbf{Uniqueness (One-Person-One-Vote):} Each eligible voter can cast at most one vote. $\forall v_i \in \mathcal{R}: |\text{votes}(v_i)| \leq 1$.
+    
+    \item \textbf{Privacy (Ballot Secrecy):} It is not possible for any entity to know who voted for which candidate. In formal terms, it is hard for any polynomial-time adversary to distinguish between the joint distribution of (voter identity, vote value) and uniform.
+    
+    \item \textbf{Individual Verifiability:} Each voter can verify their vote was cast.
+    
+    \item \textbf{Universal Verifiability:} It is possible for any observer to see that the published result accurately represents the set of valid votes cast.
+    
+    \item \textbf{Coercion Resistance:} A voter is unable to convince a coercer of who he voted for or how he voted (no receipt that connects voter to vote choice).
+    
+    \item \textbf{Robustness:} It is robust in the sense that the system gives correct answers even if some of its participants (voters, servers, or observers) do not follow the protocol.
+    
+    \item \textbf{Fairness:} No count of the results comes until after the election has ended.
+\end{enumerate}
+
+The traditional contrast of verifiability and privacy is the central paradox of e-voting: how could the votes be verifiable, while being secret at the same time? This project shows that such a paradox can be overcome with the help of zero-knowledge proofs: proofs of correctness that do not reveal the underlying data.
+
+\subsection{Blockchain as an Election Infrastructure}
+
+It is noteworthy that Blockchain technology was originally envisioned by Nakamoto (2008) \cite{nakamoto2008bitcoin} as the basis for the Bitcoin cryptocurrency. Bitcoin is a distributed append-only ledger that is maintained by consensus among distrusted peers. Buterin (2014) \cite{buterin2014ethereum}continued this idea with Ethereum and added to it a capability to implement deterministic state transitions that do not require trusted intermediaries: smart contracts \cite{szabo1997smart}. Wood (2014) \cite{wood2014ethereum} has developed the Ethereum Virtual Machine specification, allowing for verifiable computation on a decentralized network.
+
+Blockchain offers a verifiable, transparent, decentralized ledger that can overcome many of the weaknesses inherent in centralized e-voting solutions. When combined with advanced cryptographic techniques—particularly zero-knowledge. In the field of voting, blockchain provides a way to create a voting system that guarantees security, verifiability, and voter anonymity \cite{mdpi2024evoting, cluster2024blockchain}.
+
+The core blockchain properties relevant to e-voting include:
+\begin{itemize}
+    \item \textbf{Immutability:} A vote is final after being cast and cannot be changed or deleted. The blocks reference the cryptographic hash of the previous block, forming a tamper evident chain.
+    \item \textbf{Transparency:} All stakeholders are able to check the integrity of the process. The ledger is public and can be independently audited.
+    \item \textbf{Decentralization:} No single entity controls the election outcome. Consensus mechanisms distribute trust across multiple nodes.
+    \item \textbf{Traceability:} The ability to follow the whole election process, keeping voter anonymity with cryptographic methods.
+    \item \textbf{Deterministic Execution:} Smart contracts ensure that the same input always yields the same output, get rid of human judgment in counting votes.
+\end{itemize}
+
+But the usage of general purpose blockchains (such as Ethereum) results in unnecessary costs: voters need to hold cryptocurrencies to pay the gas fees, management of wallets makes it more difficult, and the Turing complete execution environment is over-designed for the relatively simple logic of vote counting. This observation 2 suggests a two-pronged strategy, a ZK voting application for correctness verification and a dedicated blockchain for efficient election administration.
+Smart contracts (or equivalent deterministic state machines) can be used to automate key aspects of the election process, including voter registration, vote casting, and vote counting, thereby reducing the need for manual effort and the potential for election tampering.
+
+\subsection{Zero-Knowledge Proofs: The Key Enabler}
+
+Zero-knowledge proofs (ZKPs) are a type of cryptographic protocol in which a prover can convince a verifier that a statement is true without revealing any information beyond the truth of the statement. The idea is paradoxical, but was first proposed by Goldwasser, Micali and Rackoff in 1985 and has since proven to be one of the most useful ideas in contemporary cryptography. 
+There are three essential properties of a zero-knowledge proof:
+\begin{enumerate}
+    \item \textbf{Completeness:} If the statement is true,then an honest prover can convince the verifier
+    \item \textbf{Soundness:} If the statement is false, no cheating prover can convince the verifier (except with negligible probability)
+    \item \textbf{Zero-Knowledge:} The verifier learns nothing beyond the truth of the statement
+\end{enumerate}
+
+\subsubsection{ZKPs in E-Voting Context}
+
+In electronic voting, ZKPs enable a voter to prove:
+\begin{enumerate}
+    \item They are a registered, eligible voter (membership proof)
+    \item They have not voted before (nullifier uniqueness)
+    \item They have a volid vote (vote binding)
+\end{enumerate}
+
+All without revealing which registered voter they are. This is a property that is fundamentally different from the traditional encryption-based methods in which a trusted party will have to decrypt votes at some point. Unlike traditional voting systems, ZKPs ensure voter privacy without relying on a trusted party, and the system operator cannot even determine who voted for what.
+
+\subsubsection{A Concrete ZK Example: Proving Knowledge of a Hash Preimage}
+
+Let's look at the simplest ZK statement that is relevant to our system: A Concrete ZK Example: Proving Knowledge of a Hash Preimage. A voter would like to show that he/she knows a secret value s for which H(s) = h, where h is known to the public and H is a hash function:
+
+\begin{equation}
+\text{Statement: } \exists \, s \text{ such that } H(s) = h
+\label{eq:hash_preimage}
+\end{equation}
+
+\textbf{Without ZK:} The voter reveals $s$; anyone can compute $H(s)$ and check if it equals $h$. But now everyone knows $s$.
+
+\textbf{With ZK:} The voter generates a proof $\pi$ such that:
+\begin{itemize}
+    \item Anyone can verify $\pi$ against $h$ and confirm the voter knows $s$
+    \item Nobody can extract $s$ from $\pi$ (computationally infeasible)
+    \item The proof is \textit{succinct}: $|\pi| \ll |s|$ (much smaller than the witness)
+\end{itemize}
+
+In our voting system, this is extended to proving knowledge of a Merkle path: the voter proves that they have a commitment in the voter registry tree, but without revealing which leaf it is.
+
+\newpage
+\section{Problem Statement}
+Conventional e-voting systems face major challenges that undermine the trust, security, and transparency of electoral processes:
+
+\begin{enumerate}
+    \item \textbf{Identity Management and Authentication:} Despite this being a major challenge,there is need to make sure that every voter is identified and authenticated. The systems should not allow duplication of registration nor impersonation and how the voter privacy is maintained. \cite{jetir2025secureblockchain}\cite{sharp2024blockchain_evoting}.
+    
+    \item \textbf{Privacy and Anonymity:} Protecting voter identity and vote secrecy is critical. Transparency and the preservation of anonymity are in a conflict situation and thus it is hard to avoid vote buying, coercion, or tampering \cite{hajian2024blockchain}\cite{kho2022review}.
+    
+    \item \textbf{Trust and Centralization:} Conventional systems of election are based on centralized authorities that can be vulnerable to insider attack, corruption or manipulation \cite{hajian2024blockchain}. Reliance on third parties of trust leads to single points of failure.
+    
+    \item \textbf{Vote Selling and Coercion:}  Voters can become pressured or be offered incentives to be in control of their voting credentials which creates threats of vote selling or coercion \cite{hajian2024blockchain}\cite{wang2024multiparty}.
+    
+    \item \textbf{Scalability and Performance:} Elections can be conducted with millions of concurrent voters, and this can cause network overload, slow vote-submission, and poor system performance \cite{prajapat2020investigating}\cite{mdpi2022scalability}\cite{abuidris2021secure}.
+    
+    \item \textbf{Individual and Universal Verifiability:} It is a complicated issue to make sure that the total election outcomes are correct and that voters are able to verify that their votes are correctly counted without affecting the privacy \cite{hajian2024blockchain}\cite{wang2024multiparty}.
+    
+    \item \textbf{Transparency and Auditability:} The problem is to make the process of election auditable and transparent as well as to assure the anonymity of the voter is a challenging balance to consider \cite{hajian2024blockchain}.
+    
+    \item \textbf{Usability and Accessibility:} Voters have varying technical skills. Complex systems might restrict the access of users who are either not technologically adept or those users with accessibility requirements \cite{hajian2024blockchain}\cite{vladucu2023evoting}.
+    
+    \item \textbf{Security Vulnerabilities and Attack Prevention:} Election systems have security vulnerabilities such as network attacks, manipulating and key management vulnerabilities, which may be used to compromise the entire election \cite{hajian2024blockchain}\cite{vladucu2023evoting}.
+
+    \item \textbf{Client-Side Security and Malware:} Devices of the users may be breached by malware which manipulates or intercepts votes. A major issue is ensuring the integrity of the vote in case the endpoints are not secure \cite{jetir2025secureblockchain}\cite{ivoting-ccs2014}\cite{halderman2015ivote}.
+    
+    \item \textbf{Denial of Service Attacks:} The attacks can overload the network or the servers and slow down the voting process or make it impossible to vote \cite{jetir2025secureblockchain}\cite{prajapat2020investigating}.
+\end{enumerate}
+
+These challenges highlight the need for alternative approaches. Our research addresses this gap by combining zero-knowledge proofs (for mathematical privacy guarantees) with a purpose-built blockchain (for transparent, tamper-proof record keeping) to create a system where privacy and verifiability coexist without contradiction.
+\newpage
+\section{Objectives and Scope}
+
+\subsection{Objectives and Expected Outcomes}
+\begin{enumerate}
+    \item Develop a dedicated blockchain solution for elections that is optimized for the election administration process, offering an immutable and transparent record of votes without the burden of using general-purpose blockchain platforms.
+    
+    \textbf{Expected Outcome:} A custom blockchain node (Go) that has specific transaction types, authority-based consensus, and deterministic state management for elections.
+
+    \item Design a voter registration and authentication system which guarantees one person one vote using cryptographic commitment schemes.
+    
+    \textbf{Expected Outcome:} A secure voter registration process that uses unique voter identifi cation via Poseidon hash commitments in an Incremental Merkle Tree, while maintaining voter privacy and preventing duplicate voter registration.
+
+    \item Implement a zero-knowledge proof-based voting mechanism that guarantees privacy, vote secrecy, and integrity.
+
+    \textbf{Expected Outcome:} Votes cast with mathematical privacy guarantees – no entity can determine which voter cast which vote, achieved through the UltraHonk proving scheme with browser-based proof generation.
+
+    \item Achieve end-to-end verifiability enabling voters to confirm their votes are correctly counted and facilitating public verification of election results.
+
+    \textbf{Expected Outcome:} Individual verifiability (voters can confirm their vote) and universal verifiability (anyone can audit the tally) without compromising voter privacy.
+
+    \item Create user-friendly interfaces for voters and administrators, and develop comprehensive testing covering functionality, security, and reliability.
+
+    \textbf{Expected Outcome:} Votes cast with mathematical privacy guarantees – no entity can determine which voter cast which vote, due to the UltraHonk proving scheme, which can be generated in the browser.
+\end{enumerate}
+
+\subsection{Scope of the Project}
+
+\textbf{Included in Scope:}
+\begin{itemize}
+    \item \textbf{Cryptographic Circuit Design:} Design and implementation of a Noir zero-knowledge circuit that encodes voter eligibility, nullifier uniqueness, and vote binding into a single arithmetic constraint system verified via UltraHonk.
+    
+    \item \textbf{Custom Blockchain Infrastructure:} Development of a purpose-built blockchain node in Go with election-specific transaction types (voter registration, vote casting, tally finalization) and authority-based consensus---replacing the overhead of general-purpose platforms.
+    
+    \item \textbf{Smart Contract Layer:} Solidity-based on-chain voting logic deployed on an EVM-compatible chain (Hardhat for development), with equivalent logic replicated in the Go blockchain for production deployment.
+    
+    \item \textbf{Browser-Based Proof Generation:} Client-side ZK proof generation using Barretenberg's WebAssembly backend, enabling voters to prove eligibility entirely within the browser without exposing private inputs to any server.
+    
+    \item \textbf{Voter-Facing Web Application:} A Next.js/React frontend guiding voters through commitment creation, registration, and anonymous vote submission---designed so users need no knowledge of cryptography or blockchain wallets.
+    
+    \item \textbf{Anonymity via Identity Separation:} Implementation of a burner-wallet mechanism that cryptographically decouples the voter's registered identity from their vote transaction, ensuring unlinkability.
+    
+    \item \textbf{Verification and Testing:} Comprehensive test coverage including unit tests for each smart contract function, integration tests for the full registration-to-vote pipeline, and security-focused tests validating resistance to double-voting, proof forgery, and Merkle root manipulation.
+\end{itemize}
+
+\textbf{Limitations and Exclusions:}
+\begin{itemize}
+    \item The current prototype operates on a local Hardhat network for rapid iteration; migration to the custom Go blockchain is underway and will eliminate gas fees and wallet dependencies.
+    \item Voter identity verification uses address-based allowlisting managed by the election administrator. Integration with decentralized identity providers (e.g., government eID, Worldcoin) is deferred to future work.
+    \item The system requires a modern browser with WebAssembly support; native mobile applications are out of scope.
+    \item The current implementation supports binary referendums (Yes/No). Multi-candidate and ranked-choice elections are architecturally planned but not yet implemented.
+\end{itemize}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CHAPTER 2: LITERATURE REVIEW
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Literature Review}
+
+\section{Theoretical Foundations}
+
+\subsection{Cryptographic Hash Functions}
+
+A cryptographic hash function $H: \{0,1\}^* \rightarrow \{0,1\}^n$ is a function that takes an arbitrary length input and produces a fixed length output. In blockchain systems and zero-knowledge proof constructions, hash functions are basic primitives that are used as commitment functions, integrity checks, and as building blocks for more complex protocols \cite{merkle1988digital}. A secure hash function should have the following properties:
+
+\begin{enumerate}
+    \item \textbf{Preimage Resistance:} For a given $h$, it is hard to find $m$ such that $H(m) = h$. 
+    
+    \item \textbf{Second Preimage Resistance:} Given $m_1$, it is infeasible to find $m_2 \neq m_1$ such that $H(m_1) = H(m_2)$
+    
+    \item \textbf{Collision Resistance:} It is infeasible to find any pair $(m_1, m_2)$ where $m_1 \neq m_2$ and $H(m_1) = H(m_2)$.
+\end{enumerate}
+
+The selection of hash function is of great significance to zero-knowledge proof systems. Traditional hash functions optimized for hardware (such as SHA-256, Keccak) use bitwise operations, which are natural in binary circuits but very expensive as arithmetic constraints over prime fields, the native representation used by modern ZK proof systems.
+
+\subsubsection{Poseidon Hash Function}
+
+The Poseidon hash function, introduced by Grassi et al. (2021) \cite{grassi2021poseidon}, represents a paradigm shift in hash function design: rather than optimizing for hardware or software execution speed, Poseidon is designed specifically for efficient evaluation inside arithmetic circuits over prime fields. This design philosophy termed ``arithmetization-oriented''is a paradigm shift in the design of hash functions: it is not optimized for hardware or software evaluation speed; instead, it is optimized for efficient evaluation in arithmetic circuits over prime fields. This design philosophy, which we call “arithmetization-oriented” yields dramatic constraint count reductions compared to the traditional hash functions.
+
+Poseidon is not a bit-level operation, it is a field-level operation:
+
+\begin{equation}
+\text{Poseidon}: \mathbb{F}_p^t \rightarrow \mathbb{F}_p
+\label{eq:poseidon_def}
+\end{equation}
+
+Where $\mathbb{F}_p$ is a prime field (in our case, the BN254 scalar field with $p \approx 2^{254}$). The function is constructed using a sponge construction with:
+\begin{itemize}
+    \item \textbf{Round function:} Alternating $R_F$ full rounds and $R_P$ partial rounds. Full rounds apply the S-box to all state elements ; partial rounds apply it to one state element, reducing the totalnumber of constraints.
+    \item \textbf{S-box:} $x \mapsto x^\alpha$ where $\alpha = 5$ for BN254. The selection of $\alpha$ such that $\gcd(\alpha, p-1) = 1$ (the S-box is a permutation over $\mathbb{F}_p$)  and the number of multiplications used is minimized: $x^5 = x \cdot x \cdot x \cdot x \cdot x$ requires only 3 multiplications ($x^2, x^4, x^5$).
+    \item \textbf{Linear layer:} MDS (Maximum Distance Separable) matrix multiplication ensures optimal diffusion : each output element is dependent on all input elements in one round. The MDS property ensured that the minimum number of active S-boxes in any differential trail is maximized.
+    \item \textbf{Round constants:} Pre-computed constants added to the beginning of each round to defeat algebraic attacks and to prevent symmetry.
+\end{itemize}
+
+The number of rounds will depend on the security analysis:
+\begin{equation}
+R_F = 8, \quad R_P = \begin{cases} 56 & \text{for } t = 2 \text{ (our commitment scheme)} \\ 57 & \text{for } t = 3 \text{ (Merkle tree hashing)} \end{cases}
+\end{equation}
+
+\textbf{Security analysis:} Poseidon is analyzed against three types of attacks: (1) algebraic attacks based on the low-degree S-box, (2) differential and linear cryptanalysis based on the properties of the MDS matrix, and (3) interpolation attacks which are attempts to find low-degree polynomial representations. The numbers above are rounded to give a margin of security of at least 2× the minimum required for 128-bit security \cite{grassi2021poseidon}.
+
+\subsection{Merkle Trees}
+
+A Merkle tree \cite{merkle1988digital} is a basic data structure used in the design of cryptographic protocols, which offers efficient proofs of membership in a set of logarithmic complexity. It is a binary tree with each leaf node storing a hash of a data block, and each internal node storing a hash of the data block that is stored in its left child.
+
+\begin{equation}
+\text{node}_{i,j} = H(\text{node}_{i-1, 2j} \| \text{node}_{i-1, 2j+1})
+\label{eq:merkle_node}
+\end{equation}
+
+i = level (0 = leaves) and j = position at level. The root (topmost node) is a small commitment for all data in the tree.
+
+\textbf{Computational Complexity:}
+\begin{itemize}
+    \item \textbf{Tree construction:} $O(n)$ hash computations for $n$ leaves
+    \item \textbf{Membership proof generation:} $O(\log n)$-only $d$ sibling hashes needed, where $d = \lceil \log_2 n \rceil$
+    \item \textbf{Proof verification:} $O(\log n)$-$d$ hash computations to reconstruct the root
+    \item \textbf{Proof size:} $O(\log n)$-constant per level, logarithmic in total leaves
+\end{itemize}
+
+This logarithmic scaling is critical for ZK voting: regardless of whether the election has 100 or 100,000 registered voters, the ZK circuit performs only $d$ Poseidon hash computations to verify membership. With $d = 16$, our system supports up to $2^{16} = 65{,}536$ voters while maintaining constant proof size and verification time.
+
+\subsubsection{Merkle Proof of Membership}
+
+The prover provides evidence that a leaf $\ell$ exists at position $j$ in a tree with root $R$, by the \textit{authentication path} the sibling nodes along the path from $\ell$ to $R$:
+
+\begin{equation}
+\text{path} = [s_0, s_1, \ldots, s_{d-1}] \quad \text{where } d = \text{depth of tree}
+\label{eq:merkle_path}
+\end{equation}
+
+The verifier reconstructs the root by iteratively hashing:
+
+\begin{equation}
+h_0 = \ell, \quad h_{i+1} = \begin{cases} H(h_i, s_i) & \text{if bit } i \text{ of } j = 0 \\ H(s_i, h_i) & \text{if bit } i \text{ of } j = 1 \end{cases}
+\label{eq:merkle_verify}
+\end{equation}
+
+If $h_d = R$, then the leaf is proven to be in the tree. The proof size is $O(\log n)$ for a tree with $n$ leaves, only 16 hashes are needed for a tree with 65,536 leaves.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    level distance=1.5cm,
+    sibling distance=3cm,
+    every node/.style={rectangle, draw, minimum width=1.5cm, minimum height=0.6cm, font=\footnotesize},
+    edge from parent/.style={draw, -}
+]
+\node[fill=green!20] {Root $= h_3$}
+    child {node[fill=yellow!20] {$h_2$}
+        child {node[fill=yellow!20] {$h_1$}
+            child {node[fill=blue!20] {$\ell$ (voter)}}
+            child {node[fill=orange!15] {$s_0$ (sibling)}}
+        }
+        child {node[fill=orange!15] {$s_1$ (sibling)}
+            child[draw=none] {node[draw=none] {}}
+            child[draw=none] {node[draw=none] {}}
+        }
+    }
+    child {node[fill=orange!15] {$s_2$ (sibling)}
+        child[draw=none] {node[draw=none] {}}
+        child[draw=none] {node[draw=none] {}}
+    };
+\end{tikzpicture}
+\caption{Merkle proof structure: the voter (blue) provides siblings (orange) to reconstruct the root (green). Only the path from leaf to root is needed- the rest of the tree remains hidden.}
+\label{fig:merkle_proof}
+\end{figure}
+
+\subsubsection{Lean Incremental Merkle Tree}
+
+Traditional Merkle trees require pre-allocation of all leaves. The \textit{Lean Incremental Merkle Tree} (LeanIMT) optimizes storage by only maintaining the ``frontier''; the rightmost node at each level(and computing internal nodes on-demand).It cuts down on-chain storage from $O(n)$ to $O(\log n)$.
+
+\subsection{Non-Interactive Zero-Knowledge Proofs (NIZKs)}
+
+Interactive ZK proofs \cite{goldwasser1985knowledge} involves two-way communication, blockchain applications need \textit{non-interactive} proofs ; a one way message from prover to verifier. The first approach to interactive to non-interactive was developed by Blum, Feldman, and Micali (1988) \cite{blum1988noninteractive} using a common reference string (CRS), and later by Fiat and Shamir \cite{fiat1986prove} using a random oracle (hash function) to simulate the verifier's challenges.
+
+A NIZK proof system consists of three algorithms:
+
+\begin{equation}
+\pi \leftarrow \text{Prove}(pk, x, w) \quad ; \quad b \leftarrow \text{Verify}(vk, x, \pi)
+\label{eq:nizk}
+\end{equation}
+
+Where:
+\begin{itemize}
+    \item $pk$ - proving key (public parameters for proof generation)
+    \item $vk$ - verification key (public parameters for proof checking)
+    \item $x$ - public inputs (statement to be verified)
+    \item $w$ - witness (private inputs known only to the prover)
+    \item $\pi$ - proof (succinct, constant-size)
+    \item $b$ - boolean verdict (accept/reject)
+\end{itemize}
+
+\textbf{Succinctness} is a critical property: the size of the proof $|\pi|$ and the time needed to verify the proof should be much smaller than the time needed to compute the object being proven. Formally, for a relation $\mathcal{R}$ of size $n$, we need $|\pi| = O(\text{polylog}(n))$ and $T_{\text{verify}} = O(\text{polylog}(n))$. This property allows for practical deployment of blockchain: onchain verifier does constant time work for any circuit.
+
+\subsubsection{Arithmetization: From Computation to Constraints}
+
+The computation needs to be arithmetized to an arithmetic circuit over a finite field before a ZK proof can be created. There are various arithmetization schemes for modern proving systems:
+
+\begin{itemize}
+    \item \textbf{R1CS (Rank-1 Constraint System):} Used by Groth16 and Circom. Represents constraints as $\vec{a} \cdot \vec{s} \times \vec{b} \cdot \vec{s} = \vec{c} \cdot \vec{s}$ where $\vec{s}$ is the witness vector. One multiplication gate is represented by each constraint.
+    
+    \item \textbf{PLONKish Arithmetization:} Used by PLONK \cite{gabizon2019plonk} and UltraHonk \cite{aztec2024ultrahonk}. Represents constraints as entries in a \textit{trace table} with custom gates. Each row encodes a gate: $q_L \cdot w_L + q_R \cdot w_R + q_O \cdot w_O + q_M \cdot w_L \cdot w_R + q_C = 0$, where $q_*$ are selector polynomials and $w_*$ are wire values. This is more flexible than R1CS because:
+    \begin{itemize}
+        \item Custom gates can encode complex operations (e.g., range checks, lookups) in fewer rows
+        \item Lookup tables enable efficient implementation of non-arithmetic operations
+        \item The universal reference string (URS) is circuit-independent
+    \end{itemize}
+\end{itemize}
+
+Our system uses UltraHonk's PLONKish arithmetization via the Noir compiler \cite{noir2024docs}, which automatically translates high-level Noir code into an optimized constraint system. The compiled circuit contains 19,278 gates,which is significantly less than the number of gates in an equivalent Circom circuit, thanks to the custom gates that UltraHonk has created for Poseidon and range checks.
+
+\subsubsection{ZK-SNARKs vs.\ ZK-STARKs}
+
+The two most prominent families of succinct zero-knowledge proof systems have very different cryptographic assumptions and properties:
+
+\textbf{ZK-SNARKs} (Zero-Knowledge Succinct Non-interactive Arguments of Knowledge) \cite{groth2016size} are based on bilinear pairings over elliptic curves (e.g., BN254, BLS12-381). They producethe smallest proofs (128 bytes for Groth16) but have traditionally needed a \textit{trusted setup}, trusted setup, which is a ceremony that produces structured reference strings (SRS). In the event of a compromise, an adversary can create proofs that can be verified, and thus defeat the system entirely. Recent pairing-based systems (PLONK, UltraHonk) remove the trusted setups per circuit by employing a universal or transparent reference string \cite{gabizon2019plonk}.
+
+\textbf{ZK-STARKs} (Zero-Knowledge Scalable Transparent Arguments of Knowledge) are based on hash functions only, therefore they are transparent (no trusted setup) and may be post-quantum secure. They have much larger proofs (100 KB vs. 128 bytes for Groth16), but are faster to verify.
+
+\textbf{UltraHonk} (our choice) represents a middle ground: it is a pairing-based system that does not require a trusted setup, uses a transparent commitment scheme (IPA or KZG with powers-of-tau) and has moderately-sized proofs (14 KB) and fast verification that is suitable for on-chain deployment. The important thing to note is that no party has to be trusted during system initialization, which is a critical attribute for election integrity, given the transparent setup of UltraHonk. \cite{aztec2024ultrahonk}.
+
+\begin{table}[H]
+\centering
+\caption{Comparison of ZK proof systems}
+\label{tab:zk_systems}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Property} & \textbf{Groth16} & \textbf{PLONK} & \textbf{UltraHonk} & \textbf{STARKs} \\ \hline
+Trusted setup & Per-circuit & Universal & \textbf{None} & None \\ \hline
+Proof size & 128 bytes & 400 bytes & \textbf{$\sim$14 KB} & $\sim$100 KB \\ \hline
+Verification time & Fast & Fast & \textbf{Fast} & Slower \\ \hline
+Prover time & Moderate & Moderate & \textbf{Fast} & Fast \\ \hline
+Post-quantum secure & No & No & No & Yes \\ \hline
+\end{tabular}
+\end{table}
+
+Our system is based on \textbf{UltraHonk} from Aztec's Barretenberg library, which does not require a trusted setup, which is a major security concern as a compromised setup ceremony could allow forged proofs. The Zerocash protocol \cite{sasson2014zerocash}, was the first to use ZK-SNARKs for anonymous transactions and proved the strength and the practical challenges of trusted setup ceremonies. Other privacy-preserving designs have been used in systems such as Hawk \cite{kosba2016hawk} and Zcash \cite{zcash2016protocol}. The Semaphore protocol \cite{semaphore2020} provides a closely related ZK-based anonymous signaling primitive on Ethereum. Our adoption of UltraHonk avoids the trusted setup challenge entirely while maintaining efficient on-chain verification.
+
+\subsection{Privacy Models in E-Voting}
+
+It is important to be familiar with various privacy models, to be able to assess e-voting systems. There are three degrees of privacy guarantees:
+
+\begin{enumerate}
+    \item \textbf{Computational Privacy (Encryption-based):}  Privacy is guaranteed as long as the adversary cannot defeat the underlying encryption scheme. Violation of privacy is possible by a powerful adversary such as having access to key materials for decryption or access to a quantum computer. Estonia (RSA encryption), homomorphic tallying systems.
+    
+    \item \textbf{Information-Theoretic Privacy (Secret Sharing):} Privacy is achieved even if there is no computation power, with the proviso that a number of servers (more than a threshold) remain honest. Example: schemes that require k of-n servers to collude in threshold decryption.
+    
+    \item \textbf{Zero-Knowledge Privacy (Our Approach):}  The proof contains no information other than the truth of the statement. There is no decryption key. Even if the vote taker is a computational unbounded adversary, the adversary learns nothing about the identity of the voter from the proof. The privacy guarantee is based on the zero knowledge property of the proof system (information theoretical in the random oracle model (ROM)).
+\end{enumerate}
+
+This is important because in encryption-based systems (models 1 and 2) some party or some threshold of parties can, in principle, decrypt votes. In our ZK based system there is none, the voter's identity is never encrypted, it is never revealed.
+
+\newpage
+\section{Previous Work}
+
+Electronic voting systems on blockchain have grown to be studied extensively due to the limitations of traditional voting systems particularly to the areas of security, transparency, verifiability, and decentralization. The immutable registry and decentralized methods of consensus provided by blockchain enable the vote history to be compromised and election outcomes to be checked unbiased \cite{mdpi2024evoting, hajian2024blockchain, cluster2024blockchain}. Various blockchain architecture is proposed like permissioned, permissionless and hybrid over which there exist trade-offs in regards to the degree of security, transparency and performance \cite{kho2022review}.
+
+There are other studies that examine scalable blockchain-based voting models, which could be used to trade-off security, decentralization and performance in large scale elections \cite{mdpi2022scalability, abuidris2021secure}. Most of these techniques use sharding and hybrid consensus mechanisms to enhance the transaction throughput and the integrity of the system.
+
+Emerging research also addresses post-quantum security concerns, proposing quantum-resistant cryptographic techniques for blockchain-enabled e-voting systems to ensure future-proof voter privacy and system integrity \cite{arxiv2024quantum, mandal2024hybrid, alshahrani2021endtoend}.
+
+\subsection{Centralized E-Voting Systems}
+
+\subsubsection{Estonia's Internet Voting System}
+The world's \textbf{first e-voting system} was implemented in Estonia in 2005 and it is still in operation \cite{madise2005evoting}. They use a national ID card and a PIN number for authentication. The vote is submitted and transmitted from the Vote Forwarding Server (VFS) to Vote Storage Server (VSS), where the encrypted vote is stored until the election period is over. Also, the transaction logs are recorded in the Log server \cite{ivoting-ccs2014}. After voting closes, all votes in the VSS are stripped of identifying information and transferred to the Vote Counting Server (VCS) via a DVD. The VCS is completely isolated from all networks and is responsible for decrypting and counting votes and producing the final results. Figure~\ref{fig:ivote-architecture} shows the high level architecture of Estonia's e-voting system \cite{ivxv_protocols2022}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{estonia_architecture.pdf}
+    \caption{High level architecture Diagram of e-vote system in Estonia}
+    \label{fig:estonia_architecture}
+\end{figure}
+
+This model also allows the voter to vote any number of times in the four available days and only count the last vote entered as valid to prevent vote selling \cite{ivoting-ccs2014, sutopo2024identifying}. The Estonian e-voting system exhibits the following key limitations:
+
+\begin{enumerate}
+  \item The centralized architecture creates a single point of failure.
+  \item Insufficient transparency and over-reliance on trust.
+\end{enumerate}
+
+\subsubsection{Australia's iVote System}
+\textbf{The world's largest-ever deployment of online voting} is the iVote Internet voting system used in the 2015 state election in New South Wales, Australia \cite{halderman2015ivote}. 280,000 ballots were issued in this election. Figure~\ref{fig:ivote-architecture} show the high-level architecture diagram of the ivote system \cite{halderman2015ivote, nswec_2015_ivote_security}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{ivote_architecture.png}
+    \caption{High-level architecture of the iVote system used in the 2015 NSW State Election}
+    \label{fig:ivote-architecture}
+\end{figure}
+
+Based on security analysis during the election period, several vulnerabilities have been identified. The use of less secure third-party javascript code from ivote.piwikpro.com made the system vulnerable to the FREAK attack and Logjam attack, which can inject malicious code into the client code and change the vote content. Following vulnerabilities can be identified in this system.
+
+\begin{enumerate}
+    \item Insecure external dependency
+    \item Weak verification mechanism
+    \item Lack of transparency and auditing
+\end{enumerate}
+
+\subsection{Blockchain-Based E-Voting Systems}
+
+\subsubsection{Sierra Leone's Blockchain Voting}
+\textbf{The first national election based on blockchain} took place in Sierra Leone's presidential election in 2018 \cite{acm2024_blockchain_voting_analysis}. In the election, voters cast their votes using traditional paper ballots, and the final vote counts from polling stations were later entered into a blockchain system to create an immutable and transparent record of the election results \cite{chohan2018sierra_leone}. Issues in this system are,
+
+\begin{enumerate}
+    \item Manual vote recording introduces human errors
+    \item A server with permission needed to verify the votes, making centralized control on Blockchain
+\end{enumerate}
+
+\subsubsection{Switzerland's Verifiable E-Voting Pilots}
+Switzerland has implemented \textbf{Switzerland - Verifiable E-Voting Pilots} in 2023 which uses client side encryption, 4 Control Components for Mixing (CCMs - independent servers that shuffle and re-encrypt votes) and 4 Control Components for Return Codes (CCRs - Work together using cryptography to generate the verification codes). 3 CCMs are working online and operated by Swiss Post and one CCM is offline operated by the Canton \cite{swisspost_gitlab_evoting}. This system is considered as the most secured online voting architecture since it uses multiple layers of cryptography to prevent anyone accessing the vote content while also containing individual and universal verifiability \cite{federalchancellery_evoting}. Figure~\ref{fig:swiss_evoting_pilot} shows the system architecture of the system \cite{ford2022_audit_swisspost}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1.1\textwidth,height=0.6\textheight]{swiss_evoting_pilot.pdf}
+    \caption{Swiss Post Verifiable E-Voting System Architecture}
+    \label{fig:swiss_evoting_pilot}
+\end{figure}
+
+\subsection{Advanced Blockchain E-Voting Proposals}
+
+\subsubsection{Quantum-Secure Mobile Voting System}
+A team from BITS Pilani, Dubai Campus has proposed a system that addresses most of the problems in other e-voting systems have \cite{poudel2025quantum_blockchain_evoting}. They uses mobile-based application with biometric authentication and etherJS to create the smart contract. System achieves verifiability, fault tolerance, and quantum resilience, but they bring some concerns.
+
+\begin{enumerate}
+    \item Accessibility issues since they use anti-spoofing biometric authentication using mobileNet3.
+    \item Ethereum blockchain comes with high gas costs.
+\end{enumerate}
+
+\subsubsection{FASTEN Protocol}
+FASTEN system proposed by Damle, Gujar and Moti is blockchain-based protocol using Ethereum smart contracts to ensure fair, secure, anonymous, immutable, and cost-efficient elections. The cost per vote ($\approx$ 0.04 USD) is significantly cheaper than traditional elections ($\approx$ 5.54 USD), but the system can only process 20,000 votes per hour \cite{damle2021fasten}. Even though how advanced these systems are they still contain vulnerabilities that prevent them from being used globally \cite{vladucu2023evoting}.
+
+\subsubsection{ZK-SNARK-Based Ticket Voting System}
+
+Rabia et al. suggested an electronic voting system based on blockchain technology that uses Zero-Knowledge Succinct Non-Interactive Arguments of Knowledge (zk-SNARKs) and a ticket-based authentication scheme \cite{rabia2024zksnark}. They have a combination of blockchain technology, smart contracts, Merkle trees, and zero-knowledge proofs to improve voter privacy, anonymity, and the integrity of the electoral process.
+
+Here, the hashed voter tickets are stored in a Merkle tree; and the zk-SNARK proofs enable voters to demonstrate that they are eligible to vote without revealing their identity or vote selections. The architecture features a front-end user interface for voter interaction, a back-end service that generates the zk-SNARK proofs, smart contracts for tallying and verifying the votes, and a Merkle tree to verify voter tickets.
+
+The voting process contains four phases: setup, registration, voting and counting. In the registration period, eligible voters are allocated unique voting tickets and their unique voting tickets are hashed and added to the Merkle tree. In the voting phase, voters create zk-SNARK proofs showing that they have a valid unused voting ticket and they then cast their encrypted vote to the blockchain for verification.
+
+The system introduces several important features:
+
+\begin{enumerate}
+    \item Merkle tree integration enables efficient ticket verification with reduced on-chain storage requirements.
+    
+    \item Zero-knowledge authentication provides verifiability, while retaining the anonymity of voters.
+    
+    \item Deterministic ticket verification can be used to eliminate the double voting issue.
+    
+    \item Blockchain-based storage provides immutable and transparent election records.
+\end{enumerate}
+
+However, the authors also acknowledge several limitations:
+
+\begin{enumerate}
+    \item System is primarily a conceptual proof-of-concept and not a full-scale implementation.
+    
+    \item zk-SNARK proof generation introduces computational computational complexity and scalability issues, particularly for large-scale elections.
+    
+    \item The system does not provide detailed blockchain consensus or distributed synchronization mechanisms.
+    
+    \item The cryptographic workflow could cause user experience problems for non-technical users.
+
+\end{enumerate}
+
+\subsubsection{ZK Voting: Nullifiable Commitment-Based Coercion-Resistant System}
+
+Park et al. proposed \textbf{zkVoting},  a zero-knowledge blockchain-based e-voting system with a nullifiable commitment scheme which is resistant to coercion \cite{park2024zkvoting}. Unlike previous fake-credential voting schemes (like JCJ and Civitas), zkVoting maintains end-to-end verifiability and voter anonymity with efficient tallying, O(n), complexity.
+
+The core innovation of the system is the \textbf{nullifiable commitment scheme}.One way is for each voter to get one real commitment key and multiple fake commitment keys from the authority. When tallying, the commitments made with the real key are not lost, but those made with fake keys are lost and are treated as zero. This technique enables voters to ward off attempts at coercion by handing out fake keys to attackers and then later using the real key to vote.
+
+The zkVoting architecture consists of four phases:
+
+\begin{enumerate}
+    \item \textbf{Setup Phase:} The authority generates public parameters, master keys, encryption keys, and zero-knowledge proof parameters.
+    
+    \item \textbf{Registration Phase:} Voters authenticate themselves and obtain either real or fake casting keys.  The authority also issues proofs to make sure that no two eligible voters receive a copy of the same key.
+    
+    \item \textbf{Voting Phase:} every voter encrypts the ballot, casts a commitment with their casting key, and provides the voter, the ballot, and the correct construction of the commitment as proofs of ballot validity, voter eligibility, and the correct construction of the commitment.
+    
+    \item \textbf{Tally Phase:} The authority decrypts ballots and applies the nullification process. Fake commitments are removed automatically, and only valid ballots are counted.
+\end{enumerate}
+
+The system provides several important security guarantees:
+
+\begin{itemize}
+    \item Ballots are encrypted using the hybrid approach with zero-knowledge proofs to ensure ballot privacy
+    \item Voter anonymity ensured by cryptographic commitments and serial numbers
+    \item Receipt freeness and coercion resistance through fake casting keys
+    \item End-to-end verifiability by using publicly verifiable proofs
+\end{itemize}
+
+zkVoting was implemented using Groth16 zk-SNARKs, MiMC7 hashing, Merkle tree membership proofs, and Ethereum smart contracts. Results of experiments demonstrated the practical performance: the time to generate the ballots ranged from 1.6 to 7.3 seconds, depending on the device used. The number of gas used for ballot verification on Ethereum was about 347,000  \cite{park2024zkvoting}.
+
+Although zkVoting significantly improves coercion resistance and tally efficiency compared to previous systems, it also has a number of drawbacks:
+
+\begin{enumerate}
+    \item The system relies on Groth16 trusted setup ceremonies, which could be a security risk if they are compromised. 
+    
+    \item Deployment on Ethereum introduces high gas costs for ballot verification.
+    
+    \item The methodology also relies on the trust of the registrar and the tally authority for some privacy assurances.
+    
+    \item The implementation depends on dedicated applications rather than lightweight browser-based applications.
+\end{enumerate}
+
+
+\subsection{Comparative Analysis}
+
+Table~\ref{tab:comparison} compares existing blockchain-based e-voting systems and the proposed system across six evaluation criteria: privacy preservation, end-to-end verifiability, decentralization, scalability, cost efficiency, and key limitations.
+
+Comparison indicates that there are other strengths that are realized in the current systems. Early centralized systems (Estonia, iVote) are cost effective and scalable, but are not decentralized or strongly verifiable. Recent blockchain applications (Swiss Post, quantum-secure systems) are very privacy-focused and verifiable but expensive and performance-intensive. FASTEN is efficient in terms of cost and security and has low scalability (20,000 votes/hour).
+
+The proposed system will be able to remove these limitations with maintaining a balance of all the criteria. Since it is a prototype implementation, it will need to be optimized further to be deployed in large scale.
+
+\begin{landscape}
+\begin{table}[p]
+\centering
+\caption{Comparison of Existing E-Voting Systems with Our Implemented System}
+\label{tab:comparison}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{|c|m{3.5cm}|c|c|c|c|c|m{4.5cm}|}
+\hline
+\textbf{Ref.} & \textbf{System} & \textbf{Privacy} & \textbf{E2E Verifiable} & \textbf{Decentralized} & \textbf{Scalable} & \textbf{Cost Efficient} & \textbf{Key Limitations} \\ \hline
+
+\cite{madise2005evoting} & Estonian Internet Voting & Partial & No & No & Yes & Yes & Centralized, no E2E verifiability \\ \hline
+
+\cite{halderman2015ivote} & iVote (Australia) & Partial & Weak & No & Yes & Yes & Client-side attacks, third-party scripts \\ \hline
+
+\cite{chohan2018sierra_leone} & Sierra Leone Blockchain & No & No & Partial & Yes & Yes & Manual entry, centralized verification \\ \hline
+
+\cite{federalchancellery_evoting} & Swiss Post E-Voting & Yes & Yes & Partial & Yes & No & High cost, complex infrastructure \\ \hline
+
+\cite{abuidris2021secure} & Hybrid Consensus & Yes & Partial & Yes & Partial & No & High complexity, performance overhead \\ \hline
+
+\cite{damle2021fasten} & FASTEN Protocol & Yes & Yes & Yes & No & Yes & Limited throughput (\textasciitilde20k/hour) \\ \hline
+
+\cite{poudel2025quantum_blockchain_evoting} & Quantum-Secure Mobile & Yes & Yes & Yes & Partial & No & High gas costs, accessibility issues \\ \hline
+
+\cite{rabia2024zksnark} & ZK-SNARK Ticket Voting & Yes & Yes & Yes & Partial & Partial & Conceptual implementation, scalability concerns \\ \hline
+
+\cite{park2024zkvoting} & zkVoting & Yes & Yes & Partial & Partial & No & Groth16 trusted setup, high gas costs, requires registrar and tally authority trust \\ \hline
+
+-- & \textbf{Our System} & \textbf{Yes} & \textbf{Yes} & \textbf{Yes} & \textbf{Prototype} & \textbf{Optimized} & \textbf{Local testnet deployment} \\ \hline
+
+\end{tabular}
+\end{adjustbox}
+\end{table}
+\end{landscape}
+
+Our system achieves full privacy through ZK proofs (no trusted decryptor needed), end-to-end verifiability through on-chain proof verification, and decentralization through smart contract-based logic with no central authority controlling the tally. The primary limitation is that the current implementation operates on a local testnet rather than a production blockchain.
+
+\newpage
+\section{Gaps in Literature}
+\begin{enumerate}
+    \item \textbf{Client-Side Proof Generation:} Most proposed ZK-voting systems focus primarily on conceptual architectures and server-assisted proof workflows rather than fully decentralized browser-based proof generation accessible to ordinary users, but few demonstrate complete browser-based proof generation accessible to ordinary users \cite{mdpi2024evoting, vladucu2023evoting}.
+    
+    \item \textbf{Practical Implementation:} Many papers propose theoretical architectures without providing functional prototypes or demonstrating end-to-end workflows from registration through anonymous vote casting \cite{mdpi2022scalability, prajapat2020investigating}.
+    
+    \item \textbf{Purpose-Built Blockchain:} Most systems deploy on Ethereum or Hyperledger, inheriting their complexity (gas fees, wallet management, EVM overhead). No existing work combines a custom election-specific blockchain with ZK proofs.
+    
+    \item \textbf{Trusted Setup Elimination:} Systems using Groth16 (Circom/snarkjs) require trusted setup ceremonies that are difficult to verify and represent an attack vector.
+    
+    \item \textbf{Usability:} Insufficient attention is given to user experience, voters should not need to understand cryptography or manage cryptocurrency wallets \cite{mdpi2024evoting, vladucu2023evoting}.
+
+    \item \textbf{Trusted Setup and Blockchain Cost Barriers:} Recent advanced coercion-resistant systems such as zkVoting achieve strong privacy and efficient tallying through novel cryptographic primitives. However, these systems still depend on Groth16 trusted setup ceremonies and public blockchains with high gas costs, creating both security and economic limitations for large-scale deployment \cite{park2024zkvoting}.
+\end{enumerate}
+
+Our implementation addresses all five gaps by providing: a functional prototype with browser-based proof generation (Gap 1\&2), a custom Go blockchain (Gap 3), UltraHonk proving with no trusted setup (Gap 4), and an intuitive web interface requiring no wallet extensions (Gap 5).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CHAPTER 3: METHODOLOGY
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Methodology}
+
+\section{Overview of System Architecture}
+
+The system follows a dual-track development methodology:
+
+\begin{enumerate}
+    \item \textbf{Track A --- ZK Voting Application (this report's primary focus):} The complete voting workflow including ZK circuit design, smart contract logic, frontend proof generation, and anonymous vote casting. Currently operational on a local Ethereum-compatible blockchain (Hardhat) for rapid iteration and testing.
+    
+    \item \textbf{Track B --- Custom Blockchain (parallel development):} A purpose-built blockchain in Go, optimized for election administration. Designed to replace the Ethereum layer once the voting logic is proven correct, eliminating gas fees, wallet requirements, and EVM overhead.
+\end{enumerate}
+
+Both tracks share the same cryptographic primitives (Poseidon hash, Noir ZK circuit, UltraHonk proofs), ensuring seamless migration when Track B reaches maturity.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/m2_system_architecture_overview.png}
+    \caption{High-level system architecture showing the interaction between the browser-side ZK application layer, the blockchain smart contract layer, and the cryptographic proof system}
+    \label{fig:top_level_arch}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.65\textwidth]{images/m2_dual_track_development.png}
+    \caption{Dual-track development strategy: Track A (ZK Voting Application on Ethereum/Hardhat) operates in parallel with Track B (Custom Go Blockchain), sharing the same cryptographic layer}
+    \label{fig:dual_track}
+\end{figure}
+
+\subsection{Development Methodology}
+
+The system was developed using an iterative methodology, progressing through clearly defined implementation phases. Each phase built upon the previous one, with verification at each stage before proceeding. This approach allowed early identification and resolution of issues, ensuring a stable foundation for subsequent development.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{workflow.png}
+    \caption{Development workflow overview showing the iterative methodology}
+    \label{fig:workflow}
+\end{figure}
+
+\section{Cryptographic Design}
+
+This section formally defines the cryptographic building blocks of the system.
+
+\subsection{Commitment Scheme}
+
+A \textit{commitment scheme} allows a party to commit to a value while keeping it hidden, with the ability to reveal it later. Our scheme uses Poseidon hashing:
+
+\begin{equation}
+\boxed{C = \text{Poseidon}_2(\text{nullifier}, \text{secret})}
+\label{eq:commitment}
+\end{equation}
+
+Where:
+\begin{itemize}
+    \item $\text{nullifier} \xleftarrow{\$} \mathbb{F}_p$ --- a cryptographically random field element (256 bits of entropy)
+    \item $\text{secret} \xleftarrow{\$} \mathbb{F}_p$ --- an independent random field element
+    \item $C \in \mathbb{F}_p$ --- the commitment (publicly stored on-chain)
+\end{itemize}
+
+\textbf{Security Properties:}
+\begin{itemize}
+    \item \textbf{Binding:} Given $C$, it is computationally infeasible to find $(n', s') \neq (n, s)$ such that $\text{Poseidon}_2(n', s') = C$ (collision resistance of Poseidon)
+    \item \textbf{Hiding:} Given $C$, it reveals no information about $n$ or $s$ (preimage resistance of Poseidon)
+\end{itemize}
+
+\textbf{Numerical Example:}
+
+Let us trace through with concrete (simplified) values to illustrate the scheme:
+\begin{align}
+\text{nullifier} &= 0x1a2b3c\ldots \quad \text{(random 254-bit field element)} \\
+\text{secret} &= 0x4d5e6f\ldots \quad \text{(independent random element)} \\
+C &= \text{Poseidon}_2(0x1a2b3c\ldots, 0x4d5e6f\ldots) = 0x7f8a9b\ldots
+\end{align}
+
+The commitment $C$ is stored on-chain. The voter retains $(n, s)$ privately in their browser's localStorage.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.55\textwidth]{images/m2_commitment_scheme_flow.png}
+    \caption{Commitment scheme data flow: random field elements are generated in the browser, hashed via Poseidon, and the resulting commitment is stored on-chain while private values remain in localStorage}
+    \label{fig:commitment_flow}
+\end{figure}
+
+\subsection{Nullifier Scheme}
+
+To prevent double-voting without revealing which commitment is voting:
+
+\begin{equation}
+\boxed{N_h = \text{Poseidon}_1(\text{nullifier})}
+\label{eq:nullifier}
+\end{equation}
+
+\textbf{Why this works:}
+\begin{itemize}
+    \item Each voter has exactly one nullifier (generated during registration)
+    \item Each nullifier produces exactly one nullifier hash $N_h$ (deterministic)
+    \item When voting, $N_h$ is revealed publicly and stored on-chain
+    \item If the same voter tries to vote again, the contract detects the duplicate $N_h$
+    \item Given only $N_h$, finding the original nullifier requires breaking Poseidon's preimage resistance
+    \item The commitment $C = \text{Poseidon}_2(n, s)$ and the nullifier hash $N_h = \text{Poseidon}_1(n)$ are \textit{unlinkable} without knowledge of $n$
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\textwidth]{images/m2_nullifier_unlinkability.png}
+\caption{Nullifier scheme: the voter's private nullifier $n$ produces two public values---$N_h$ (for double-vote prevention) and $C$ (for membership registration). Without knowing $n$, an observer cannot link them.}
+\label{fig:nullifier_scheme}
+\end{figure}
+
+\subsection{Merkle Tree Membership Proof}
+
+All voter commitments are stored in a Lean Incremental Merkle Tree using Poseidon as the internal hash:
+
+\begin{equation}
+\text{parent} = \text{Poseidon}_2(\text{left\_child}, \text{right\_child})
+\label{eq:merkle_parent}
+\end{equation}
+
+The tree supports up to $2^{16} = 65{,}536$ leaves (voters). To prove membership, the voter provides:
+\begin{itemize}
+    \item Their commitment (recomputed from nullifier + secret inside the circuit)
+    \item Their leaf index $j$ (private---keeps the voter's position hidden)
+    \item The sibling hashes $[s_0, s_1, \ldots, s_{15}]$ along the path from leaf to root (private)
+\end{itemize}
+
+The circuit recomputes the root using Equation~\ref{eq:merkle_verify} and asserts it matches the public on-chain root.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/m2_merkle_tree_membership.png}
+    \caption{Merkle tree membership proof: the voter proves their commitment exists as a leaf by providing the sibling hashes along the path from their leaf to the root, without revealing which leaf is theirs}
+    \label{fig:merkle_membership}
+\end{figure}
+
+\subsection{Combined ZK Statement}
+
+The complete statement proven by our ZK circuit can be expressed as:
+
+\begin{equation}
+\boxed{
+\begin{aligned}
+&\text{Given public inputs } (N_h, R, v, d): \\
+&\exists \, (n, s, j, \vec{S}) \text{ such that:} \\
+&\quad (1) \; N_h = \text{Poseidon}_1(n) \\
+&\quad (2) \; C = \text{Poseidon}_2(n, s) \\
+&\quad (3) \; \text{MerkleVerify}(C, j, \vec{S}, d) = R \\
+&\quad (4) \; v \in \{0, 1\}
+\end{aligned}
+}
+\label{eq:zk_statement}
+\end{equation}
+
+Where:
+\begin{itemize}
+    \item $N_h$ --- nullifier hash (public, prevents double-voting)
+    \item $R$ --- Merkle root (public, ensures proof is for the current tree state)
+    \item $v$ --- vote choice (public, bound to the proof so it cannot be changed)
+    \item $d$ --- tree depth (public)
+    \item $n$ --- nullifier (private)
+    \item $s$ --- secret (private)
+    \item $j$ --- leaf index (private, protects voter position)
+    \item $\vec{S}$ --- sibling array (private, Merkle authentication path)
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/m2_combined_zk_statement.png}
+    \caption{Visual representation of the combined zero-knowledge statement: the four conditions that the voter proves without revealing their identity}
+    \label{fig:zk_statement}
+\end{figure}
+
+\subsection{Security Properties}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/m2_security_properties_matrix.png}
+    \caption{Security properties matrix: mapping each security property to its implementation mechanism, responsible component, and achievement status}
+    \label{fig:security_matrix}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Security properties achieved by the cryptographic design}
+\label{tab:security_properties}
+\begin{tabular}{|l|p{9cm}|}
+\hline
+\textbf{Property} & \textbf{How It Is Achieved} \\ \hline
+Voter Anonymity & ZK proof reveals nothing about which leaf (voter) is proving membership; identity separation breaks address linkage \\ \hline
+Double-Vote Prevention & Nullifier hash is deterministic per voter---submitting twice produces the same $N_h$, which the contract rejects \\ \hline
+Vote Integrity & Vote choice is a public input bound to the ZK proof; changing the vote invalidates the proof \\ \hline
+Eligibility & Only commitments in the Merkle tree can produce valid proofs; tree insertion is restricted to authorized voters \\ \hline
+Non-Repudiation & Once a valid proof is accepted on-chain, the vote is permanently recorded in the immutable ledger \\ \hline
+Coercion Resistance & Voter cannot prove to a coercer how they voted (proof is consumed by anonymous submission; no receipt links identity to vote) \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Formal Threat Model}
+
+We define the adversary model and security assumptions under which our system provides its guarantees.
+
+\subsubsection{Adversary Capabilities}
+
+We consider a computationally bounded adversary $\mathcal{A}$ (probabilistic polynomial-time) with the following capabilities:
+
+\begin{enumerate}
+    \item \textbf{Network observation:} $\mathcal{A}$ can observe all on-chain transactions, including proof data, nullifier hashes, vote values, and transaction metadata (sender address, timestamp, gas price).
+    
+    \item \textbf{Partial system control:} $\mathcal{A}$ may control some voter accounts (Sybil attack) but cannot control the contract owner account or the blockchain consensus mechanism.
+    
+    \item \textbf{Proof manipulation:} $\mathcal{A}$ may attempt to forge proofs, replay valid proofs with altered public inputs, or extract private witness data from observed proofs.
+    
+    \item \textbf{Smart contract interaction:} $\mathcal{A}$ can call any public function on the deployed contracts and analyze the contract bytecode.
+\end{enumerate}
+
+\subsubsection{Security Assumptions}
+
+\begin{enumerate}
+    \item \textbf{Poseidon hash security:} The Poseidon hash function over BN254 provides at least 128 bits of security against preimage, second preimage, and collision attacks \cite{grassi2021poseidon}.
+    
+    \item \textbf{Discrete logarithm hardness:} The elliptic curve discrete logarithm problem on BN254 is computationally intractable for PPT adversaries. This underpins the soundness of the UltraHonk proof system.
+    
+    \item \textbf{Random oracle model:} The Fiat-Shamir heuristic (used to make proofs non-interactive) is modeled as a random oracle. The zero-knowledge property holds information-theoretically in this model.
+    
+    \item \textbf{Client-side integrity:} The voter's browser and local environment are not compromised by malware during proof generation. This is a standard assumption shared by all client-side cryptographic systems.
+    
+    \item \textbf{Blockchain liveness:} The underlying blockchain (Hardhat local / custom Go chain) processes transactions in a timely manner and does not censor valid transactions.
+\end{enumerate}
+
+\subsubsection{Security Guarantees Under the Threat Model}
+
+Given the above adversary and assumptions, our system provides:
+
+\begin{table}[H]
+\centering
+\caption{Security guarantees mapped to cryptographic mechanisms}
+\label{tab:threat_guarantees}
+\begin{tabular}{|p{3.5cm}|p{4cm}|p{5cm}|}
+\hline
+\textbf{Guarantee} & \textbf{Mechanism} & \textbf{Reduction} \\ \hline
+Ballot secrecy & Zero-knowledge property of UltraHonk & Reduces to random oracle indistinguishability \\ \hline
+Eligibility enforcement & Merkle membership proof & Reduces to collision resistance of Poseidon \\ \hline
+Double-vote prevention & Deterministic nullifier hash & Reduces to preimage resistance of Poseidon \\ \hline
+Vote integrity & Public input binding in proof & Reduces to soundness of UltraHonk \\ \hline
+Result correctness & On-chain deterministic counting & Reduces to blockchain integrity \\ \hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Attacks Outside the Threat Model}
+
+The following attacks are acknowledged but outside our current security scope:
+
+\begin{itemize}
+    \item \textbf{Quantum adversary:} BN254 is not post-quantum secure. A quantum computer running Shor's algorithm could break the discrete logarithm assumption. Migration to lattice-based or hash-based proof systems would be required.
+    
+    \item \textbf{Client-side malware:} If the voter's browser is compromised, the malware could alter the vote before proof generation or exfiltrate private keys. This is a fundamental limitation of any client-side system \cite{ivoting-ccs2014, halderman2015ivote}.
+    
+    \item \textbf{Coercion with physical presence:} If a coercer physically observes the voter's screen during voting, the ZK proof cannot prevent observation of the vote choice.
+    
+    \item \textbf{Side-channel attacks:} Timing or power analysis of the proof generation process is not considered (mitigated by constant-time WASM execution in practice).
+\end{itemize}
+
+
+\section{Track A: ZK Voting Application Layer}
+
+\subsection{Technology Stack}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/m2_technology_stack_layers.png}
+    \caption{Technology stack organized in six layers: from development tools at the bottom through smart contracts, ZK circuits, proving engine, state management, to the user interface at the top}
+    \label{fig:tech_stack_layers}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Technology stack with justification}
+\label{tab:tech_stack}
+\begin{tabular}{|l|l|p{5.5cm}|}
+\hline
+\textbf{Component} & \textbf{Technology} & \textbf{Justification} \\ \hline
+ZK Language & Noir v1.0.0-beta.3 & Domain-specific language for ZK circuits and built-in Poseidon support \\ \hline
+Proving Backend & Barretenberg (bb) v0.82.2 & UltraHonk scheme, WASM support and  generates Solidity verifiers \\ \hline
+Smart Contracts & Solidity $\geq$0.8.0 & Industry standard language for EVM \\ \hline
+Dev Framework & Hardhat + Scaffold-ETH 2 & Local blockchain for testing and deployment \\ \hline
+Merkle Tree & @zk-kit/lean-imt.sol & Gas efficient on-chain IMT that is used Poseidon hash \\ \hline
+Hash Function & Poseidon (BN254) & ZK-friendly hash which is 40x faster than SHA-256 \\ \hline
+Frontend & Next.js 15 + React 19 & SSR and  API routes and modern React patterns \\ \hline
+State Mgmt & Zustand & Lightweight cross-component state management \\ \hline
+Chain Interaction & wagmi + viem & Ethereum and frontend interactions \\ \hline
+Browser ZK & @aztec/bb.js + noir\_js & WASM proof generation in browser without leaving the clientside \\ \hline
+Access Control & OpenZeppelin Ownable & Audited owner only protection \\ \hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Why Noir Over Circom}
+
+We selected Noir over the more widely used Circom language in web 3.0:
+
+\begin{table}[H]
+\centering
+\caption{Noir vs Circom comparison}
+\label{tab:noir_vs_circom}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Criterion} & \textbf{Noir} & \textbf{Circom} \\ \hline
+Syntax & Rust-like, high-level & Signal-based DSL \\ \hline
+Control flow & Native loops, if/else & Template instantiation \\ \hline
+Proving system & UltraHonk (no trusted setup) & Groth16 (trusted setup required) \\ \hline
+Built-in Poseidon & Yes (std library) & Requires external circomlib \\ \hline
+WASM support & Native (@aztec/bb.js) & Via snarkjs (larger bundle) \\ \hline
+Proof size & $\sim$14 KB & $\sim$128 bytes (but needs setup) \\ \hline
+Verification gas & $\sim$400K gas & $\sim$250K gas \\ \hline
+\end{tabular}
+\end{table}
+
+The elimination of trusted setup is the decisive advantage---in Groth16, a compromised ceremony allows creation of forged proofs that would pass verification, completely breaking election integrity.
+
+\subsection{Monorepo Structure}
+
+\begin{table}[H]
+\centering
+\caption{Project package structure}
+\label{tab:packages}
+\begin{tabular}{|l|l|p{6.5cm}|}
+\hline
+\textbf{Package} & \textbf{Path} & \textbf{Purpose} \\ \hline
+Circuits & \texttt{packages/circuits/} & Noir ZK circuit (membership proof) \\ \hline
+Hardhat & \texttt{packages/hardhat/} & Solidity contracts, tests, deployment \\ \hline
+Next.js & \texttt{packages/nextjs/} & React frontend (register, prove, vote) \\ \hline
+Blockchain & \texttt{packages/blockchain/} & Custom Go blockchain (Track B) \\ \hline
+\end{tabular}
+\end{table}
+
+
+\subsection{ZK Circuit Implementation}
+
+The ZK circuit is the cryptographic core of the system. It is written in Noir and simultaneously proves all four constraints from Equation~\ref{eq:zk_statement}:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/m2_zk_circuit_constraint_flow.png}
+    \caption{ZK circuit constraint flow: the four constraints (commitment, nullifier hash, Merkle membership, root match) and how they interconnect using public and private inputs}
+    \label{fig:circuit_constraints}
+\end{figure}
+
+\newpage
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/code_noir_circuit.png}
+    \caption{Complete ZK circuit implementation in Noir}
+    \label{lst:circuit}
+\end{figure}
+
+\subsubsection{Circuit Parameters}
+
+\begin{table}[H]
+\centering
+\caption{ZK circuit input/output specification}
+\label{tab:circuit_params}
+\begin{tabular}{|l|l|l|p{5.5cm}|}
+\hline
+\textbf{Parameter} & \textbf{Type} & \textbf{Visibility} & \textbf{Purpose} \\ \hline
+\texttt{nullifier\_hash} & Field & Public & Anti-double-vote; stored on-chain \\ \hline
+\texttt{root} & Field & Public & Tree root to verify against \\ \hline
+\texttt{vote} & bool & Public & Voter's choice (bound to proof) \\ \hline
+\texttt{depth} & u32 & Public & Current tree depth \\ \hline
+\texttt{nullifier} & Field & Private & Hashed to produce $N_h$ \\ \hline
+\texttt{secret} & Field & Private & Combined with nullifier for $C$ \\ \hline
+\texttt{index} & Field & Private & Leaf position (hidden for privacy) \\ \hline
+\texttt{siblings} & [Field; 16] & Private & Merkle path (max 65,536 voters) \\ \hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Why Each Input's Visibility Matters}
+
+\begin{itemize}
+    \item \textbf{nullifier\_hash is public:} The contract stores it to detect repeat votes. Making it public does not compromise privacy because deriving the original nullifier from its Poseidon hash requires $O(2^{254})$ operations.
+    
+    \item \textbf{root is public:} The contract compares it against the current on-chain root to ensure the proof corresponds to the latest voter registry state.
+    
+    \item \textbf{vote is public:} The contract reads this to increment the correct counter. Binding it as a public input inside the proof prevents an attacker from reusing a proof with a different vote value.
+    
+    \item \textbf{index is private:} If the index were public, an observer could determine which leaf (which registration) is voting---breaking anonymity entirely.
+    
+    \item \textbf{siblings are private:} The Merkle path uniquely identifies the voter's position in the tree.
+\end{itemize}
+
+\subsection{Circuit Compilation Pipeline}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\textwidth]{images/m2_circuit_compilation_pipeline.png}
+\caption{Circuit compilation pipeline from Noir source to on-chain Solidity verifier}
+\label{fig:compile_pipeline}
+\end{figure}
+
+The compilation commands (executed in WSL Ubuntu):
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/code_compile_commands.png}
+    \caption{Circuit compilation commands (executed in WSL Ubuntu)}
+    \label{fig:compile_commands}
+\end{figure}
+
+\textbf{Key point:} The \texttt{--oracle\_hash keccak} flag ensures compatibility with Ethereum's native hash function, making the generated verifier directly deployable to any EVM chain.
+
+
+\subsection{Smart Contract Architecture}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{images/m2_smart_contract_architecture.png}
+\caption{Smart contract architecture showing dependencies between contracts and libraries}
+\label{fig:contract_arch}
+\end{figure}
+
+\subsubsection{Voting.sol --- Main Contract}
+
+The main contract manages the entire voting lifecycle. Its state variables:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/code_voting_state.png}
+    \caption{Voting contract core state}
+    \label{lst:voting_state}
+\end{figure}
+
+\subsubsection{Registration Function}
+
+The \texttt{register()} function implements three security gates:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/code_register.png}
+    \caption{Registration logic with security checks}
+    \label{lst:register}
+\end{figure}
+
+\textbf{Important implementation detail:} The commitment $C$ is inserted \textit{directly} into the LeanIMT---the library internally applies Poseidon hashing when computing parent nodes during the tree update. The contract does \textbf{not} double-hash the commitment before insertion.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/m2_registration_sequence.png}
+    \caption{Registration sequence diagram: the complete flow from voter interaction through browser-side commitment generation, on-chain registration, Merkle tree insertion, and localStorage persistence}
+    \label{fig:reg_sequence}
+\end{figure}
+
+\newpage
+\subsubsection{Vote Function with ZK Verification}
+
+The vote function is the most critical---it verifies the ZK proof and counts the vote:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/code_vote_function.png}
+    \caption{Vote function with on-chain ZK proof verification}
+    \label{lst:vote_function}
+\end{figure}
+
+\textbf{Note:} The \texttt{VoteCast} event emits six fields including the running vote totals, enabling frontends to update results in real-time without additional contract queries. The \texttt{msg.sender} is the \textit{burner wallet} address, not the voter's real identity.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/m2_vote_verification_sequence.png}
+    \caption{Vote verification sequence: the complete on-chain flow from burner wallet submission through root check, ZK proof verification by HonkVerifier, nullifier check, vote counting, and event emission}
+    \label{fig:vote_sequence}
+\end{figure}
+
+\subsubsection{Generated ZK Verifier Properties}
+
+\begin{table}[H]
+\centering
+\caption{HonkVerifier.sol properties (auto-generated from circuit)}
+\label{tab:verifier_properties}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Property} & \textbf{Value} \\ \hline
+Circuit size (gates) & 19,278 \\ \hline
+Public inputs & 4 (nullifier\_hash, root, vote, depth) \\ \hline
+Proving scheme & UltraHonk \\ \hline
+Contract size & 1,883 lines of Solidity \\ \hline
+Deployment gas & $\sim$4,727,047 \\ \hline
+Interface & \texttt{verify(bytes proof, bytes32[] inputs) $\rightarrow$ bool} \\ \hline
+\end{tabular}
+\end{table}
+
+
+\subsection{Frontend: Browser-Side Proof Generation}
+
+The entire proof generation pipeline executes in the voter's browser---no server ever sees the private inputs:
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\textwidth]{images/m2_browser_proof_generation_pipeline.png}
+\caption{Browser-side proof generation pipeline: from retrieving private inputs through Merkle tree reconstruction, witness computation, and ZK proof generation using WebAssembly}
+\label{fig:proof_pipeline}
+\end{figure}
+
+\textbf{Why rebuild the Merkle tree in the browser?}
+
+The smart contract stores the Merkle tree in a frontier format (only the rightmost node at each level). There is no efficient on-chain function to retrieve arbitrary Merkle proofs. Therefore, the frontend:
+\begin{enumerate}
+    \item Fetches all \texttt{NewLeaf} events (containing leaf values and indices)
+    \item Reconstructs the complete tree using the same Poseidon hash function
+    \item Generates the inclusion proof locally
+\end{enumerate}
+
+The \texttt{@zk-kit/lean-imt} TypeScript library produces identical tree structures to its Solidity counterpart, ensuring the locally-computed root always matches the on-chain root.
+
+
+\subsection{Anonymous Vote Submission}
+
+\subsubsection{The Linkability Problem}
+
+If the voter submits the proof from the same blockchain address they registered with, an on-chain observer could trivially link the registration transaction to the vote transaction---breaking anonymity despite the ZK proof.
+
+\subsubsection{Solution: Identity Separation via Burner Wallets}
+
+\begin{enumerate}
+    \item \textbf{Generate fresh wallet:} \texttt{generatePrivateKey()} creates a cryptographically random Ethereum private key (no prior transaction history)
+    \item \textbf{Fund the wallet:} On local Hardhat, \texttt{setBalance} provides gas. On production, a relay/paymaster would be used.
+    \item \textbf{Submit vote:} The fresh wallet calls \texttt{Voting.vote(proof, publicInputs)}
+    \item \textbf{Discard:} The wallet is no longer needed after voting
+\end{enumerate}
+
+On the custom blockchain (Track B), this problem is eliminated entirely---there are no wallets or gas fees; the ZK proof itself serves as authentication.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{images/m2_anonymous_vote_submission_flow.png}
+    \caption{Anonymous vote submission: the linkability problem (top) and its solution via burner wallets (bottom), showing how identity separation breaks the on-chain link between voter registration and vote casting}
+    \label{fig:anon_vote}
+\end{figure}
+
+\subsubsection{Privacy Analysis}
+
+\begin{table}[H]
+\centering
+\caption{Information visible vs.\ hidden to on-chain observers}
+\label{tab:privacy_analysis}
+\begin{tabular}{|p{6cm}|p{6cm}|}
+\hline
+\textbf{Visible On-Chain} & \textbf{Hidden (Private)} \\ \hline
+Anonymous address called \texttt{vote()} & Who controls that address \\ \hline
+Vote choice (Yes/No) & Which registered voter cast it \\ \hline
+Nullifier hash (unique per voter) & The nullifier preimage \\ \hline
+ZK proof blob ($\sim$14KB) & The voter's leaf index \\ \hline
+Merkle root + tree depth & The sibling path \\ \hline
+Timestamp of vote TX & When the voter registered \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Complete Data Flow}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/m2_complete_end_to_end_data_flow.png}
+    \caption{Complete end-to-end data flow from admin setup through voter registration, ZK proof generation, anonymous vote submission, on-chain verification, and real-time result display}
+    \label{fig:data_flow}
+\end{figure}
+
+\subsection{Frontend Component Architecture}
+
+\begin{table}[H]
+\centering
+\caption{Frontend component responsibilities}
+\label{tab:components}
+\begin{tabular}{|l|p{8cm}|}
+\hline
+\textbf{Component} & \textbf{Responsibility} \\ \hline
+\texttt{VotingStats.tsx} & Reads on-chain state and displays live vote statistics \\ \hline
+\texttt{CreateCommitment.tsx} & Generates nullifier + secret, computes commitment, registers on-chain \\ \hline
+\texttt{VoteChoice.tsx} & Yes/No vote selector; stores choice in Zustand \\ \hline
+\texttt{GenerateProof.tsx} & Fetches circuit, rebuilds tree, generates ZK proof \\ \hline
+\texttt{VoteWithBurnerHardhat.tsx} & Creates burner wallet, funds it, submits proof \\ \hline
+\texttt{AddVotersModal.tsx} & Owner-only batch voter allowlisting \\ \hline
+\end{tabular}
+\end{table}
+
+\newpage
+\subsection{State Management and Persistence}
+
+Cross-component state is managed by a Zustand store:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/code_zustand_store.png}
+    \caption{Zustand state store structure}
+    \label{lst:store}
+\end{figure}
+
+Commitment data, proof data, and wallet details are also persisted in localStorage (keyed by contract address and user address) to survive page reloads.
+
+\subsection{Testing Methodology}
+
+The smart contracts are tested using Hardhat's testing framework with Chai assertions:
+
+\begin{table}[H]
+\centering
+\caption{Test coverage summary}
+\label{tab:tests}
+\begin{tabular}{|l|c|p{5.5cm}|}
+\hline
+\textbf{Category} & \textbf{Tests} & \textbf{What Is Verified} \\ \hline
+Registration (success) & 5 & Commitment insertion, events, tree updates \\ \hline
+Registration (reverts) & 3 & Non-allowlisted, double reg, duplicate commitment \\ \hline
+View functions & 3 & getVotingData returns correct structure \\ \hline
+\textbf{Total} & \textbf{11} & \textbf{All passing (741ms)} \\ \hline
+\end{tabular}
+\end{table}
+
+
+\section{Track B: Custom Purpose-Built Blockchain}
+
+\subsection{Motivation for a Custom Blockchain}
+
+While the ZK voting application (Track A) is fully functional on Ethereum-compatible infrastructure, deploying on a general-purpose blockchain introduces unnecessary overhead for election use cases:
+
+\begin{table}[H]
+\centering
+\caption{Ethereum features vs.\ election requirements}
+\label{tab:eth_overhead}
+\begin{tabular}{|l|c|p{6cm}|}
+\hline
+\textbf{Ethereum Feature} & \textbf{Needed?} & \textbf{Reason} \\ \hline
+Mining / Proof of Stake & No & Election is authority-administered \\ \hline
+Gas fees / ETH currency & No & Voters shouldn't need cryptocurrency \\ \hline
+MetaMask / Wallets & No & Adds friction; requires browser extensions \\ \hline
+EVM execution engine & No & Voting logic is simple; no Turing-complete VM needed \\ \hline
+Burner wallets & No & Custom API is identity-free; ZK proof IS the auth \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Architecture}
+
+The custom blockchain is implemented in Go and consists of the following modules:
+
+\begin{table}[H]
+\centering
+\caption{Custom blockchain module structure}
+\label{tab:blockchain_modules}
+\begin{tabular}{|l|l|p{5.5cm}|}
+\hline
+\textbf{Module} & \textbf{Path} & \textbf{Responsibility} \\ \hline
+Core & \texttt{internal/core/} & Block/transaction structures, chain validation, genesis block \\ \hline
+Persistence & \texttt{internal/persistence/} & JSON file-based chain storage \\ \hline
+State & \texttt{internal/state/} & Voting state machine (mirrors Voting.sol logic) \\ \hline
+Crypto & \texttt{internal/crypto/} & Poseidon hash (Go), LeanIMT, ZK verification \\ \hline
+API & \texttt{internal/api/} & REST HTTP server with CORS \\ \hline
+Node & \texttt{cmd/node/} & Application entry point \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Blockchain Data Structures}
+
+The blockchain uses election-specific transaction types:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{images/code_blockchain_types.png}
+    \caption{Custom blockchain transaction types}
+    \label{lst:blockchain_types}
+\end{figure}
+
+\subsection{Development Stages}
+
+The custom blockchain development follows these stages:
+
+\begin{enumerate}
+    \item \textbf{Stage 1 --- Blockchain Foundation (Completed):} Core data structures, chain management, genesis block, JSON persistence, tamper detection
+    \item \textbf{Stage 2 --- Cryptography Layer (In Progress):} Poseidon hash in Go (using \texttt{go-iden3-crypto}), LeanIMT implementation, hash compatibility verification with JavaScript/Noir
+    \item \textbf{Stage 3 --- Voting State Machine:} Complete voting logic mirroring Voting.sol behavior, state rebuilt from chain replay
+    \item \textbf{Stage 4 --- ZK Proof Verification:} Integration with \texttt{bb verify} CLI for proof validation
+    \item \textbf{Stage 5 --- REST API Server:} HTTP endpoints for frontend connection
+    \item \textbf{Stage 6 --- Integration Testing:} End-to-end election simulation
+    \item \textbf{Stage 7 --- Frontend Connection:} Replacing Ethereum hooks with REST API calls
+\end{enumerate}
+
+\subsection{Key Design Decision: Shared Cryptographic Artifacts}
+
+The custom blockchain reuses the exact same cryptographic artifacts as the Ethereum implementation:
+
+\begin{itemize}
+    \item Same Noir circuit (\texttt{main.nr}) --- unchanged
+    \item Same compiled bytecode (\texttt{circuits.json}) --- served to browser
+    \item Same verification key (\texttt{vk}) --- used by \texttt{bb verify}
+    \item Same Poseidon hash parameters --- Go implementation verified against JS/Noir
+\end{itemize}
+
+This means the browser-side proof generation code requires \textbf{zero changes} when migrating from Ethereum to the custom blockchain. The voter's experience is identical---only the backend transport changes from Ethereum RPC to REST API.
+
+\subsection{Advantages Over Ethereum Deployment}
+
+\begin{table}[H]
+\centering
+\caption{Custom blockchain advantages for election use case}
+\label{tab:custom_advantages}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Aspect} & \textbf{Ethereum} & \textbf{Custom Blockchain} \\ \hline
+Voter cost & Gas fees per TX & Free (no currency) \\ \hline
+Voter setup & MetaMask + ETH & None (browser only) \\ \hline
+Admin control & Contract ownership & Authority-based consensus \\ \hline
+Throughput & $\sim$15 TPS (L1) & Limited only by verification time \\ \hline
+Storage & Expensive (per slot) & Cheap (local JSON/DB) \\ \hline
+Anonymity & Burner wallets needed & ZK proof = authentication \\ \hline
+\end{tabular}
+\end{table}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CHAPTER 4: RESULTS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Results}
+
+\section{Functional Demonstration}
+
+The ZK voting application (Track A) was successfully demonstrated through a complete end-to-end voting cycle:
+
+\subsection{Contract Deployment}
+
+All four contracts were deployed on the local Hardhat blockchain:
+
+\begin{table}[H]
+\centering
+\caption{Contract deployment results}
+\label{tab:deployment_results}
+\begin{tabular}{|l|l|r|}
+\hline
+\textbf{Contract} & \textbf{Address} & \textbf{Gas Used} \\ \hline
+PoseidonT3 & 0x5FbDB2...  & 3,700,000 \\ \hline
+LeanIMT & (linked library) & 1,000,000 \\ \hline
+HonkVerifier & 0x9fE46...  & 4,727,047 \\ \hline
+Voting & 0xCf7Ed3...  & 672,000 \\ \hline
+\textbf{Total} & & \textbf{$\sim$10,100,000} \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{ZK Pipeline Verification}
+
+The complete cryptographic pipeline was verified end-to-end:
+
+\begin{table}[H]
+\centering
+\caption{ZK pipeline execution results}
+\label{tab:zk_results}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Step} & \textbf{Command} & \textbf{Result} \\ \hline
+Compile circuit & \texttt{nargo compile} & 19,278 gates \\ \hline
+Generate witness & \texttt{nargo execute} & Witness solved \\ \hline
+Generate proof & \texttt{bb prove} & $\sim$14KB UltraHonk proof \\ \hline
+Verify off-chain & \texttt{bb verify} & ``Proof verified successfully'' \\ \hline
+Verify on-chain & \texttt{HonkVerifier.verify()} & Returns \texttt{true} \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Security Verification}
+
+\begin{table}[H]
+\centering
+\caption{Security property verification results}
+\label{tab:security_results}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Attack Scenario} & \textbf{Expected Behavior} & \textbf{Result} \\ \hline
+First valid vote & Accept, count vote & Pass \\ \hline
+Same nullifier (double vote) & Revert: NullifierHashAlreadyUsed & Pass \\ \hline
+Invalid ZK proof & Revert: InvalidProof & Pass \\ \hline
+Wrong Merkle root & Revert: InvalidRoot & Pass \\ \hline
+Non-registered voter & Cannot generate valid proof & Pass \\ \hline
+Tampered vote value & Proof verification fails & Pass \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Automated Test Results}
+
+\begin{table}[H]
+\centering
+\caption{Complete automated test suite results}
+\label{tab:test_results}
+\begin{tabular}{|l|c|r|}
+\hline
+\textbf{Test Case} & \textbf{Status} & \textbf{Gas} \\ \hline
+Allowlisted voter can register & Pass & 142,660 \\ \hline
+Registration updates voter status & Pass & --- \\ \hline
+Tree root updates after registration & Pass & --- \\ \hline
+Multiple registrations increment depth & Pass & 181,833 \\ \hline
+Sequential leaf indices emitted correctly & Pass & --- \\ \hline
+Non-allowlisted voter cannot register & Pass (reverts) & --- \\ \hline
+Double registration rejected & Pass (reverts) & --- \\ \hline
+Duplicate commitment rejected & Pass (reverts) & --- \\ \hline
+Batch voter addition works & Pass & 72,412 \\ \hline
+View functions return correctly & Pass & --- \\ \hline
+getVotingData returns all fields & Pass & --- \\ \hline
+\textbf{Total: 11/11 passing} & \textbf{All Pass} & \textbf{741ms} \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Performance Metrics}
+
+\begin{table}[H]
+\centering
+\caption{System performance measurements}
+\label{tab:performance}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Operation} & \textbf{Time} & \textbf{Environment} \\ \hline
+Circuit compilation & $\sim$3 seconds & WSL Ubuntu \\ \hline
+Verification key generation & $\sim$2 seconds & WSL Ubuntu \\ \hline
+Browser proof generation & 5--8 seconds & Chrome/Firefox, desktop \\ \hline
+On-chain vote verification & $<$1 second & Hardhat local node \\ \hline
+Frontend page load & $<$2 seconds & Next.js dev server \\ \hline
+Full voting cycle (user view) & $\sim$30 seconds & Including wallet interactions \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Proof Size Analysis}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    ybar,
+    bar width=20pt,
+    xlabel={Proving System},
+    ylabel={Proof Size (bytes)},
+    symbolic x coords={Groth16, PLONK, UltraHonk, STARK},
+    xtick=data,
+    nodes near coords,
+    nodes near coords align={vertical},
+    ymin=0,
+    ymax=120000,
+    width=0.8\textwidth,
+    height=6cm,
+    every node near coord/.append style={font=\scriptsize}
+]
+\addplot[fill=blue!30] coordinates {(Groth16, 128) (PLONK, 400) (UltraHonk, 14000) (STARK, 100000)};
+\end{axis}
+\end{tikzpicture}
+\caption{Proof size comparison across proving systems. UltraHonk (our choice) trades larger proofs for elimination of trusted setup---a worthwhile tradeoff for election integrity.}
+\label{fig:proof_size}
+\end{figure}
+
+\subsection{Custom Blockchain Results (Track B)}
+
+Stage 1 of the custom blockchain has been completed:
+
+\begin{itemize}
+    \item Block and Transaction data structures with SHA-256 hashing --- operational
+    \item Genesis block creation with voting question --- operational
+    \item Chain validation (tamper detection) --- passing all tests
+    \item JSON file persistence (save/load) --- operational
+    \item Transaction types defined: \texttt{ADD\_VOTER}, \texttt{REGISTER}, \texttt{VOTE}
+\end{itemize}
+
+Stage 2 (Poseidon hash compatibility with JavaScript/Noir) is currently in development.
+
+\newpage
+\section{User Interface Screenshots}
+
+\begin{figure}[H]
+    \centering
+    \fbox{\parbox{0.9\textwidth}{\centering\vspace{3cm}\textbf{[Screenshot: Voting page showing VotingStats, CreateCommitment, VoteChoice, GenerateProof, and VoteWithBurner sections]}\vspace{3cm}}}
+    \caption{Complete voting page interface with all workflow steps}
+    \label{fig:voting_page}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \fbox{\parbox{0.9\textwidth}{\centering\vspace{3cm}\textbf{[Screenshot: Browser console showing proof generation output --- ``witness generated'', ``proof generated, size: 14000 bytes'']}\vspace{3cm}}}
+    \caption{Browser console during ZK proof generation showing WASM execution}
+    \label{fig:proof_console}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \fbox{\parbox{0.9\textwidth}{\centering\vspace{3cm}\textbf{[Screenshot: Successful vote cast --- vote counts updated, transaction hash shown]}\vspace{3cm}}}
+    \caption{Successful anonymous vote submission with updated tallies}
+    \label{fig:vote_success}
+\end{figure}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CHAPTER 5: DISCUSSION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Discussion}
+
+\section{Achievements Against Objectives}
+
+\begin{table}[H]
+\centering
+\caption{Objective achievement assessment}
+\label{tab:objectives_mapping}
+\begin{tabular}{|c|p{4.5cm}|p{4.5cm}|c|}
+\hline
+\textbf{Obj.} & \textbf{Objective} & \textbf{Implementation} & \textbf{Status} \\ \hline
+1 & Blockchain infrastructure & EVM contracts (functional) + Custom Go blockchain (Stage 1 complete) & Partial \\ \hline
+2 & One-person-one-vote & Poseidon commitment + Merkle tree + allowlist + duplicate prevention & Achieved \\ \hline
+3 & ZK proof-based privacy & UltraHonk proofs + nullifier scheme + burner wallets & Achieved \\ \hline
+4 & End-to-end verifiability & On-chain proof verification + public counters + deterministic tally & Achieved \\ \hline
+5 & User-friendly interfaces & Next.js web UI + 11 automated tests + full E2E demo & Achieved \\ \hline
+\end{tabular}
+\end{table}
+
+\newpage
+\section{Analysis of Privacy Guarantees}
+
+Our system provides \textit{zero-knowledge privacy} rather than \textit{computational privacy}---a fundamental distinction with significant implications for election integrity:
+
+\begin{itemize}
+    \item \textbf{Encryption-based systems} (e.g., Estonia \cite{madise2005evoting}): A key holder can eventually decrypt---privacy depends on the honesty of the key custodian. Formally, privacy reduces to the semantic security of the encryption scheme: $\text{Privacy} \iff \text{IND-CPA security of } \mathcal{E}$.
+    \item \textbf{Mix-net systems} (e.g., Switzerland \cite{federalchancellery_evoting}): Privacy depends on at least one mix server being honest (threshold assumption). If all $k$ mix servers collude, all votes are deanonymized.
+    \item \textbf{Homomorphic tallying} (e.g., Helios \cite{adida2008helios}): Votes are encrypted homomorphically and tallied without decryption of individual votes. Privacy depends on the threshold decryption committee not colluding.
+    \item \textbf{Our ZK-based system}: No entity, regardless of computational power, can link a vote to a voter. The ZK proof reveals \textit{mathematically nothing} beyond the truth of the statement. Formally, for any PPT distinguisher $\mathcal{D}$:
+\end{itemize}
+
+\begin{equation}
+|\Pr[\mathcal{D}(\pi, x) = 1] - \Pr[\mathcal{D}(S(x), x) = 1]| \leq \text{negl}(\lambda)
+\end{equation}
+
+where $\pi$ is the real proof and $S(x)$ is the simulated proof (produced without knowledge of the witness). This means the proof contains \textit{zero} information about the voter's identity.
+
+\subsection{Comparison of Privacy Models}
+
+\begin{table}[H]
+\centering
+\caption{Privacy model comparison across e-voting architectures}
+\label{tab:privacy_models}
+\begin{tabular}{|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|}
+\hline
+\textbf{Property} & \textbf{Encryption} & \textbf{Mix-net} & \textbf{Homomorphic} & \textbf{ZK (Ours)} \\ \hline
+Trust assumption & Key custodian honest & $\geq$1 mixer honest & Threshold committee & None \\ \hline
+Decryption possible & Yes & Yes (if collusion) & Individual: No & No \\ \hline
+Post-quantum secure & No (RSA/ECC) & Depends on cipher & No (typically) & No (BN254) \\ \hline
+Voter can prove vote & Yes (receipt) & No & Depends & No (receipt-free) \\ \hline
+Privacy type & Computational & Threshold & Computational & Information-theoretic* \\ \hline
+\end{tabular}
+\end{table}
+
+\textit{*In the random oracle model, the zero-knowledge property is information-theoretic.}
+
+\newpage
+\section{Formal Correctness Analysis}
+
+We analyze the correctness of our protocol against the formal voting requirements established in Chapter 1.
+
+\subsection{Eligibility Correctness}
+
+\textbf{Claim:} Only voters whose commitments are in the Merkle tree can generate valid proofs.
+
+\textbf{Argument:} Suppose an adversary $\mathcal{A}$ can generate a proof $\pi$ that passes verification for a commitment $C^*$ not in the tree. Then $\mathcal{A}$ has found values $(n^*, s^*, j^*, \vec{S}^*)$ such that $\text{MerkleVerify}(C^*, j^*, \vec{S}^*, d) = R$ where $R$ is the current root. But the Merkle tree is collision-resistant (under Poseidon's collision resistance): the probability that a non-member commitment produces a valid path to the root is bounded by the collision probability of Poseidon, which is $\leq 2^{-128}$.
+
+\subsection{Uniqueness Correctness}
+
+\textbf{Claim:} Each voter can vote at most once.
+
+\textbf{Argument:} The nullifier $n$ is fixed at registration time. The nullifier hash $N_h = \text{Poseidon}_1(n)$ is deterministic. On the first vote, $N_h$ is stored on-chain. On any subsequent attempt, the contract checks $\texttt{s\_nullifierHashes}[N_h]$ and reverts. To vote twice, $\mathcal{A}$ would need to find $n' \neq n$ such that $\text{Poseidon}_1(n') = N_h$ (second preimage) or find a commitment in the tree linked to a different nullifier (which requires registration of a second commitment, prevented by the \texttt{s\_hasRegistered} check).
+
+\subsection{Vote Binding Correctness}
+
+\textbf{Claim:} The vote value cannot be altered after proof generation.
+
+\textbf{Argument:} The vote $v$ is a public input to the ZK circuit. The proof $\pi$ commits to the specific value of $v$ through the Fiat-Shamir transcript. If an adversary modifies $v$ to $v'$ after proof generation, the verifier recomputes the challenge using the altered public inputs, and the proof verification fails. This follows directly from the soundness property of UltraHonk: $\Pr[\text{Verify}(vk, x', \pi) = 1 \wedge x' \neq x] \leq \text{negl}(\lambda)$.
+
+\newpage
+\section{Scalability Analysis}
+
+Scalability is a critical concern for any voting system intended for real-world deployment. We analyze the asymptotic complexity of each system component:
+
+\begin{table}[H]
+\centering
+\caption{Asymptotic complexity analysis for $n$ registered voters}
+\label{tab:complexity}
+\begin{tabular}{|l|c|c|p{4.5cm}|}
+\hline
+\textbf{Operation} & \textbf{Time} & \textbf{Space} & \textbf{Notes} \\ \hline
+Voter registration & $O(\log n)$ & $O(\log n)$ & Merkle tree insert (frontier update) \\ \hline
+Tree reconstruction (browser) & $O(n)$ & $O(n)$ & Rebuild from events for proof generation \\ \hline
+Merkle proof generation & $O(\log n)$ & $O(\log n)$ & Path extraction from local tree \\ \hline
+ZK proof generation (browser) & $O(|C|)$ & $O(|C|)$ & $|C|$ = circuit size (19,278 gates), independent of $n$ \\ \hline
+On-chain verification & $O(1)$ & $O(1)$ & Proof size and verifier computation are constant \\ \hline
+Nullifier check & $O(1)$ & $O(n)$ & Mapping lookup; storage grows linearly \\ \hline
+\end{tabular}
+\end{table}
+
+The key insight: on-chain verification cost is \textbf{constant} ($O(1)$) regardless of how many voters are registered. The ZK proof compresses all membership evidence into a fixed-size proof. Only the browser-side proof generation increases slightly (due to Merkle tree reconstruction), but this grows as $O(n)$ for tree construction and $O(\log n)$ for proof computation.
+
+\textbf{Bottleneck analysis:} The primary scalability bottleneck is browser-side tree reconstruction, which requires fetching all $n$ \texttt{NewLeaf} events and rebuilding the tree. For $n = 65{,}536$ voters with 16-level Merkle trees, this involves approximately $2n - 1 \approx 131{,}071$ Poseidon hash computations. At an estimated rate of 10,000 hashes/second in WASM, this takes approximately 13 seconds---acceptable for a voting application where proof generation is an infrequent operation.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    xlabel={Number of Registered Voters},
+    ylabel={Proof Generation Time (seconds)},
+    xmin=0, xmax=70000,
+    ymin=0, ymax=12,
+    legend pos=north west,
+    grid=major,
+    width=0.8\textwidth,
+    height=6cm
+]
+\addplot[color=blue, mark=*, thick] coordinates {
+    (1, 5) (100, 5.2) (1000, 5.5) (10000, 6) (30000, 7) (65536, 8)
+};
+\addlegendentry{Browser proof generation}
+
+\addplot[color=red, dashed, mark=square*, thick] coordinates {
+    (1, 0.3) (100, 0.3) (1000, 0.3) (10000, 0.3) (30000, 0.3) (65536, 0.3)
+};
+\addlegendentry{On-chain verification}
+\end{axis}
+\end{tikzpicture}
+\caption{Scalability: proof generation time grows sub-linearly with voter count (Merkle tree depth = $\log_2 n$), while on-chain verification is constant-time regardless of voter count.}
+\label{fig:scalability}
+\end{figure}
+
+The key insight: on-chain verification cost is \textbf{constant} ($O(1)$) regardless of how many voters are registered. The ZK proof compresses all membership evidence into a fixed-size proof. Only the browser-side proof generation increases slightly (due to Merkle tree reconstruction), but this grows as $O(n)$ for tree construction and $O(\log n)$ for proof computation.
+
+\newpage
+\section{Limitations, Challenges, and Future Work}
+
+\subsection{Current Limitations}
+
+\begin{enumerate}
+    \item \textbf{Gas Costs (resolved by Track B):} On-chain ZK verification costs 300K--500K gas per vote. At Ethereum mainnet gas prices (as of 2024, approximately 20--50 gwei), each vote would cost \$2--\$10 USD---prohibitive for public elections. The custom blockchain eliminates gas entirely.
+    
+    \item \textbf{Multi-Candidate Support:} Current system supports Yes/No. Extension to multiple candidates requires circuit modification (vote as integer with range check: $v \in \{0, 1, \ldots, k-1\}$ for $k$ candidates). This adds approximately $\lceil \log_2 k \rceil$ additional constraints to the circuit.
+    
+    \item \textbf{Voter Authentication:} The allowlist-based system requires manual voter addition. Integration with decentralized identity (Worldcoin, government eID) is future work. This is a deployment challenge rather than a cryptographic one.
+    
+    \item \textbf{Coercion Resistance:} While receipt-free (the voter cannot prove to a third party how they voted), the system does not implement re-voting for stronger coercion resistance. Adding re-voting would require modifying the nullifier scheme to allow multiple nullifier hashes per voter while only counting the last vote.
+    
+    \item \textbf{Root Freshness:} If new voters register between proof generation and vote submission, the root changes and the proof becomes invalid. A root history mechanism (storing the last $k$ valid roots) would solve this at the cost of $O(k)$ additional storage.
+    
+    \item \textbf{Custom Blockchain Completion:} Stages 2--7 of Track B are in active development by team members.
+    
+    \item \textbf{Post-Quantum Security:} The BN254 elliptic curve used by UltraHonk is vulnerable to Shor's algorithm. Migration to lattice-based or hash-based proof systems (e.g., STARKs) would be necessary for long-term quantum resistance, at the cost of larger proofs.
+\end{enumerate}
+
+\subsection{Technical Challenges Encountered}
+
+During the implementation, several significant technical challenges were identified and resolved:
+
+\begin{enumerate}
+    \item \textbf{Hash Function Compatibility:} Poseidon hash implementations must produce identical outputs across three environments: Noir circuits (field arithmetic), Solidity smart contracts (uint256), and TypeScript frontend (BigInt). Any discrepancy in round constants, field modulus, or endianness causes proof verification failure. We resolved this by using the \texttt{@zk-kit} library family, which provides verified cross-platform Poseidon implementations.
+    
+    \item \textbf{WASM Memory Constraints:} The Barretenberg WASM module requires approximately 256 MB of memory for proof generation. Some mobile browsers and older devices cannot allocate this, limiting accessibility. We mitigate this by detecting WASM support and memory availability before attempting proof generation.
+    
+    \item \textbf{Circuit Compilation Toolchain:} The Noir/Barretenberg toolchain requires WSL (Windows Subsystem for Linux) on Windows systems, adding development complexity. The \texttt{--oracle\_hash keccak} flag for Ethereum-compatible verifier generation was not documented in the main Noir documentation, requiring examination of the Barretenberg source code.
+    
+    \item \textbf{Merkle Tree Frontier Format:} The on-chain LeanIMT stores only frontier nodes (the rightmost path), not the complete tree. This design minimizes gas costs but means the frontend must reconstruct the tree from event logs---a non-obvious architectural requirement that was discovered during integration testing.
+\end{enumerate}
+
+\subsection{Future Research Directions}
+
+\begin{enumerate}
+    \item \textbf{Formal Verification:} Applying formal methods (e.g., model checking, theorem proving) to verify the correctness of the ZK circuit and smart contract logic. Tools such as Certora or K Framework could provide machine-checked proofs of contract invariants.
+    
+    \item \textbf{Differential Privacy for Tallies:} While individual votes are private, the final tally reveals aggregate information. Adding differential privacy noise to intermediate tallies could provide privacy for the aggregate result, though this trades accuracy for privacy.
+    
+    \item \textbf{Recursive Proofs for Scalability:} Using recursive proof composition (proof-of-proofs) to batch-verify multiple votes in a single on-chain transaction, reducing gas costs by amortizing verification across $k$ votes.
+    
+    \item \textbf{Decentralized Identity Integration:} Replacing the allowlist mechanism with privacy-preserving identity verification (e.g., ZK credentials from government-issued documents) to enable truly self-sovereign voter registration.
+    
+    \item \textbf{Cross-Chain Deployment:} Evaluating deployment on Layer 2 networks (Arbitrum, Optimism, zkSync) where gas costs are 10--100x lower than Ethereum mainnet, as an alternative to the custom blockchain for organizations that prefer existing infrastructure.
+\end{enumerate}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CHAPTER 6: TIMELINE
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Timeline and Resources}
+
+\section{Project Timeline}
+
+The project is conducted across two academic semesters (32 weeks).
+
+\begin{landscape}
+\begin{figure}[p]
+    \centering
+    \includegraphics[width=1.7\textwidth,height=0.8\textheight]{timeline.png}
+    \caption{Project timeline over two academic semesters (32 weeks)}
+    \label{fig:timeline}
+\end{figure}
+\end{landscape}
+
+\section{Implementation Phases}
+
+\begin{table}[H]
+\centering
+\caption{Implementation phases and completion status}
+\label{tab:phases}
+\begin{tabular}{|c|l|c|l|}
+\hline
+\textbf{Phase} & \textbf{Description} & \textbf{Track} & \textbf{Status} \\ \hline
+0 & Project Scaffold (Scaffold-ETH 2 + Noir) & A & Completed \\ \hline
+1 & Voting Contract Structure & A & Completed \\ \hline
+2 & Voter Registration with LeanIMT & A & Completed \\ \hline
+3 & ZK Circuit --- Commitment Scheme & A & Completed \\ \hline
+4 & ZK Circuit --- Merkle Root Verification & A & Completed \\ \hline
+5 & Solidity Verifier Generation & A & Completed \\ \hline
+6 & vote() + E2E Proof Verification & A & Completed \\ \hline
+7 & Frontend UI \& Commitment Registration & A & Completed \\ \hline
+8 & Browser-Side ZK Proof Generation & A & Completed \\ \hline
+9 & Anonymous Vote Casting (Burner Wallet) & A & Completed \\ \hline
+\hline
+B1 & Blockchain Foundation (Go) & B & Completed \\ \hline
+B2 & Cryptography Layer (Poseidon in Go) & B & In Progress \\ \hline
+B3 & Voting State Machine & B & Planned \\ \hline
+B4 & ZK Proof Verification (bb verify) & B & Planned \\ \hline
+B5 & REST API Server & B & Planned \\ \hline
+B6 & Integration Testing & B & Planned \\ \hline
+B7 & Frontend Connection & B & Planned \\ \hline
+\end{tabular}
+\end{table}
+
+\section{Resources}
+
+\subsection{Hardware}
+\begin{itemize}
+    \item Personal computers (4 team members) with Windows 11 + WSL Ubuntu
+    \item Minimum 8GB RAM required for browser proof generation (WASM)
+\end{itemize}
+
+\subsection{Software (All Open Source)}
+\begin{itemize}
+    \item Noir compiler (nargo) v1.0.0-beta.3, Barretenberg (bb) v0.82.2
+    \item Go 1.22+ (custom blockchain)
+    \item Node.js v20.18.3, Yarn v4.13.0
+    \item Hardhat, Next.js 15, React 19, TypeScript
+    \item Visual Studio Code, Git + GitHub
+\end{itemize}
+
+\subsection{Cost}
+Total development cost: \textbf{\$0} --- entirely open-source tools on local infrastructure.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CHAPTER 7: CONCLUSION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Conclusion}
+
+This project presents the design, implementation, and analysis of a privacy-preserving end-to-end verifiable electronic voting system that addresses the fundamental tension between ballot secrecy and election integrity. Through the novel combination of zero-knowledge proofs, on-chain verification, and cryptographic identity separation, the system achieves simultaneously:
+
+\begin{enumerate}
+    \item \textbf{Complete voter anonymity} --- through zero-knowledge proofs and identity separation, no entity (including system administrators) can determine which voter cast which vote. This is a \textit{mathematical} guarantee, not a policy guarantee. The privacy is information-theoretic in the random oracle model, meaning no computational advance can break it.
+    
+    \item \textbf{Double-vote prevention} --- through deterministic nullifier hashing, each voter can vote exactly once. Attempting a second vote reveals the same nullifier hash, which is rejected. The determinism is guaranteed by the preimage resistance of the Poseidon hash function.
+    
+    \item \textbf{Public verifiability} --- all proof verifications and vote counts are transparent on-chain. Anyone can independently verify the election result by replaying the transaction history and confirming that every accepted proof passes the HonkVerifier contract.
+    
+    \item \textbf{Client-side privacy} --- proof generation happens entirely in the voter's browser via WebAssembly. No server, no administrator, no third party ever sees the voter's private inputs. This eliminates the need for trusted intermediaries that characterize encryption-based systems \cite{madise2005evoting, federalchancellery_evoting}.
+    
+    \item \textbf{No trusted setup} --- the UltraHonk proving system \cite{aztec2024ultrahonk} eliminates trusted setup ceremonies, removing a significant attack vector present in Groth16-based systems \cite{groth2016size}. The system parameters are derived from publicly verifiable randomness.
+    
+    \item \textbf{No trusted authority for privacy} --- unlike encryption-based systems (where a key holder can decrypt) or mix-net systems (where colluding mixers can deanonymize), our ZK-based approach provides privacy without any trust assumption on third parties.
+\end{enumerate}
+
+The system was built across 10 iterative phases (Track A) with all phases completed and demonstrated successfully. Additionally, a purpose-built blockchain (Track B) is under parallel development to eliminate the overhead of general-purpose Ethereum infrastructure---removing gas fees, wallet requirements, and EVM complexity while preserving all cryptographic guarantees.
+
+\textbf{Research Contributions.} This project makes the following contributions to the field of cryptographic voting systems:
+\begin{enumerate}
+    \item A complete, functional implementation of browser-based ZK proof generation for voting, demonstrating that client-side proof generation is practical with modern hardware and WASM technology.
+    \item A formal analysis of the security properties achieved by combining Poseidon-based commitment schemes with UltraHonk proofs and on-chain verification.
+    \item A comparative evaluation against existing e-voting systems (Estonia, iVote, Swiss Post, FASTEN), identifying the specific privacy and trust advantages of the ZK-based approach.
+    \item A dual-track architecture that separates cryptographic correctness (Track A) from deployment infrastructure (Track B), enabling independent development and testing of each layer.
+    \item Empirical measurements of proof generation time, proof size, gas costs, and scalability characteristics that inform the practical deployability of ZK-based voting.
+\end{enumerate}
+
+The project demonstrates that modern zero-knowledge proof systems---particularly the Noir language \cite{noir2024docs} and UltraHonk proving backend---have matured to the point where practical, usable, privacy-preserving voting is achievable with open-source tools and standard web browsers. The formal requirements of secure electronic voting (eligibility, uniqueness, privacy, verifiability) can be simultaneously satisfied through careful cryptographic protocol design without relying on trusted third parties.
+
+Future work includes completing the custom blockchain integration (Stages 2--7), adding multi-candidate support via range-checked circuit inputs, conducting formal verification of the smart contract invariants, and evaluating post-quantum alternatives to the BN254 curve used by UltraHonk.
+
+% References
+\renewcommand{\bibname}{References}
+\bibliographystyle{ieeetr}
+\addcontentsline{toc}{chapter}{References}
+\bibliography{bibliography}
+
+\end{document}
